@@ -1,0 +1,10 @@
+{
+  "name": "fuko-galgame-gallery",
+  "version": "1.0.0",
+  "description": "展示 Bangumi 评分与全站 Galgame 待玩清单的个人静态页面",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "fetch": "node scripts/fetch-galgame.mjs"
+  }
+}

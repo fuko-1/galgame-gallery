@@ -1,0 +1,18 @@
+{
+  "project": "fuko-galgame-gallery",
+  "bangumi": {
+    "username": "koberi",
+    "nickname": "fuko",
+    "profileUrl": "https://bgm.tv/user/koberi",
+    "apiBase": "https://api.bgm.tv/v0"
+  },
+  "twodfan": {
+    "profileUrl": "https://2dfan.com/users/346524",
+    "searchUrlTemplate": "https://2dfan.com/subjects/search?keyword={title}"
+  },
+  "galgame": {
+    "subjectType": 4,
+    "tag": "Galgame",
+    "snapshotFile": "data/galgame-list.json"
+  }
+}

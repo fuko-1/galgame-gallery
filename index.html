@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>fuko 的 Galgame 收藏</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- ===================== 头部 ===================== -->
+  <header class="site-header">
+    <h1 class="site-title">fuko 的 Galgame 收藏</h1>
+    <nav class="site-nav">
+      <a id="link-bangumi" href="https://bgm.tv/user/koberi" target="_blank" rel="noopener">Bangumi 主页 ↗</a>
+      <a id="link-2dfan" href="https://2dfan.com/users/346524" target="_blank" rel="noopener">2DFan 主页 ↗</a>
+    </nav>
+  </header>
+
+  <!-- ===================== 标签页切换 ===================== -->
+  <div class="tabs" role="tablist">
+    <button class="tab active" data-tab="mine" role="tab">我的评分</button>
+    <button class="tab" data-tab="unplayed" role="tab">还没玩过的 Galgame</button>
+  </div>
+
+  <!-- ===================== 工具栏 ===================== -->
+  <div class="toolbar">
+    <!-- 状态筛选（仅「我的评分」页用） -->
+    <label class="tool tool-status" id="tool-status-wrap">
+      状态
+      <select id="filter-status">
+        <option value="all">全部</option>
+        <option value="1">想看</option>
+        <option value="3">在看</option>
+        <option value="2" selected>看过</option>
+        <option value="4">搁置</option>
+        <option value="5">抛弃</option>
+      </select>
+    </label>
+
+    <!-- 类型筛选 -->
+    <label class="tool">
+      类型
+      <select id="filter-type">
+        <option value="all">全部</option>
+        <option value="2">动画</option>
+        <option value="1">书籍</option>
+        <option value="4" selected>游戏</option>
+        <option value="3">音乐</option>
+        <option value="6">三次元</option>
+      </select>
+    </label>
+
+    <!-- 排序 -->
+    <label class="tool">
+      排序
+      <select id="sort-by">
+        <option value="rate">评分</option>
+        <option value="date">标记时间</option>
+      </select>
+    </label>
+
+    <!-- 搜索框 -->
+    <input id="search-box" class="tool search" type="search" placeholder="搜索标题 / 短评…" />
+  </div>
+
+  <!-- ===================== 内容区 ===================== -->
+  <main>
+    <!-- 加载 / 错误提示 -->
+    <div id="status-msg" class="status-msg">加载中…</div>
+
+    <!-- 卡片网格：我的评分 -->
+    <section id="grid-mine" class="card-grid" aria-label="我的评分"></section>
+
+    <!-- 列表：还没玩过的 Galgame -->
+    <section id="grid-unplayed" class="card-grid hidden" aria-label="还没玩过的 Galgame"></section>
+  </main>
+
+  <footer class="site-footer">
+    <span>数据来自 <a href="https://bgm.tv" target="_blank" rel="noopener">Bangumi</a></span>
+    <span id="snapshot-time"></span>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
