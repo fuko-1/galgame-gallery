@@ -180,3 +180,34 @@ body {
 @media (max-width: 600px) {
   .card-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
 }
+/* ---------- 分页控件 ---------- */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 8px 24px 32px;
+  flex-wrap: wrap;
+}
+.pagination.hidden { display: none; }
+.pg-btn {
+  padding: 7px 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card-bg);
+  color: var(--text);
+  font-size: 14px;
+  cursor: pointer;
+}
+.pg-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.pg-btn:disabled { opacity: .4; cursor: not-allowed; }
+.pg-info { font-size: 13px; color: var(--muted); }
+.pg-size { font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 4px; }
+.pg-select {
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--card-bg);
+  font-size: 13px;
+}
+
