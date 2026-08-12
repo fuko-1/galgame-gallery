@@ -1,13 +1,12 @@
-name: 更新全站 Galgame 清单
+name: 每日更新数据
 
 on:
   schedule:
-    # 每天北京时间凌晨 4:00（UTC 20:00）自动跑一次
-    - cron: "0 20 * * *"
-  workflow_dispatch: {}   # 允许在 Actions 页面手动点「Run workflow」触发
+    - cron: "0 20 * * *"   # 北京时间凌晨 4:00
+  workflow_dispatch: {}
 
 permissions:
-  contents: write   # 允许把更新后的 JSON 提交回仓库
+  contents: write
 
 jobs:
   fetch:
@@ -22,14 +21,17 @@ jobs:
       - name: 抓取全站 Galgame 清单
         run: node scripts/fetch-galgame.mjs
 
+      - name: 抓取我的收藏
+        run: node scripts/fetch-mine.mjs
+
       - name: 提交更新（有变化才提交）
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add data/galgame-list.json
+          git add data/galgame-list.json data/my-collections.json
           if git diff --staged --quiet; then
             echo "数据无变化，跳过提交"
           else
-            git commit -m "chore: 更新全站 Galgame 清单 ($(date -u +%Y-%m-%d))"
+            git commit -m "chore: 每日更新数据 ($(date -u +%Y-%m-%d))"
             git push
           fi
