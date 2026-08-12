@@ -218,15 +218,22 @@ function setupPagers() {
     if (size) { state.pageSize = size; state.pageMine = 1; }
     else state.pageMine += delta;
     applyMine();
+    scrollToTop();
   });
   pagerUnplayed = makePager((delta, size) => {
     if (size) { state.pageSize = size; state.pageUnplayed = 1; }
     else state.pageUnplayed += delta;
     applyUnplayed();
+    scrollToTop();
   });
   el.gridMine.after(pagerMine);
   el.gridUnplayed.after(pagerUnplayed);
 }
+
+function scrollToTop() {
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
 
 /* ---------------- 标签页切换 ---------------- */
 function switchTab(tab) {
