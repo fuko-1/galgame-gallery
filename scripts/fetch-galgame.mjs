@@ -3,9 +3,12 @@ import path from "node:path";
 
 const API = "https://api.bgm.tv/v0/search/subjects";
 const OUT = path.resolve("data/galgame-list.json");
-const PAGE = 100;          // 每页数量（放在请求体里）
-const SLEEP_MS = 350;
+const PAGE = 100;
+const SLEEP_MS = 400;
 const MAX_PAGES = 500;
+
+// Galgame 相关标签（覆盖全一点，合并去重）
+const TAGS = ["Galgame", "galgame", "GALGAME", "视觉小说", "ADV", "文字冒险"];
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -21,13 +24,13 @@ function slim(s) {
   };
 }
 
-async function fetchPage(offset) {
+async function fetchPage(tag, offset) {
   const body = {
     keyword: "",
     sort: "rank",
-    filter: { type: [4], tag: ["Galgame"], air_date: [">=1900-01-01"] },
-    limit: PAGE,           // ← limit 放这里
-    offset: offset,        // ← offset 放这里
+    filter: { type: [4], tag: [tag] },
+    limit: PAGE,
+    offset: offset,
   };
   const res = await fetch(API, {
     method: "POST",
@@ -44,27 +47,34 @@ async function fetchPage(offset) {
   return res.json();
 }
 
-async function main() {
-  const all = [];
+async function fetchTag(tag) {
+  const out = [];
   for (let page = 0; page < MAX_PAGES; page++) {
     const offset = page * PAGE;
     let data;
     try {
-      data = await fetchPage(offset);
+      data = await fetchPage(tag, offset);
     } catch (e) {
-      console.error(`第 ${page + 1} 页失败：`, e.message);
+      console.error(`[${tag}] 第 ${page + 1} 页失败：`, e.message);
       await sleep(1500);
-      data = await fetchPage(offset);
+      data = await fetchPage(tag, offset);
     }
     const list = (data.data || []).map(slim);
-    all.push(...list);
-    console.log(`第 ${page + 1} 页：本页 ${list.length} 条，累计 ${all.length} 条`);
-    if (list.length < PAGE) break;   // 不足一页说明抓完了
+    out.push(...list);
+    if (list.length < PAGE) break;
     await sleep(SLEEP_MS);
   }
+  console.log(`[${tag}] 抓到 ${out.length} 条`);
+  return out;
+}
 
+async function main() {
   const map = new Map();
-  for (const s of all) if (s && s.id) map.set(s.id, s);
+  for (const tag of TAGS) {
+    const list = await fetchTag(tag);
+    for (const s of list) if (s && s.id) map.set(s.id, s);
+    await sleep(SLEEP_MS);
+  }
   const subjects = [...map.values()];
 
   const payload = {
@@ -74,7 +84,7 @@ async function main() {
   };
   await mkdir(path.dirname(OUT), { recursive: true });
   await writeFile(OUT, JSON.stringify(payload), "utf8");
-  console.log(`✅ 完成，共 ${subjects.length} 条`);
+  console.log(`✅ 全站 Galgame 完成，共 ${subjects.length} 条`);
 }
 
 main().catch((e) => {
