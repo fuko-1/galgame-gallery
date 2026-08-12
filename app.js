@@ -29,6 +29,13 @@ const state = {
   myCollections: [],
   unplayed: [],
   mySubjectIds: new Set(),
+  // 分页状态
+  pageMine: 1,
+  pageUnplayed: 1,
+  pageSize: 50,
+  // 缓存当前过滤结果（分页用）
+  filteredMine: [],
+  filteredUnplayed: [],
 };
 
 function twodfanSearchUrl(title) {
@@ -102,7 +109,8 @@ function renderUnplayedCard(s) {
   return card;
 }
 
-function applyMineFilters() {
+/* ---------------- 过滤逻辑 ---------------- */
+function computeMineFiltered() {
   const status = el.filterStatus.value;
   const type = el.filterType.value;
   const sort = el.sortBy.value;
@@ -121,10 +129,10 @@ function applyMineFilters() {
   list.sort((a, b) => sort === "rate"
     ? (b.rate || 0) - (a.rate || 0)
     : new Date(b.updated_at || 0) - new Date(a.updated_at || 0));
-  renderGrid(el.gridMine, list, renderMyCard);
+  return list;
 }
 
-function applyUnplayedFilters() {
+function computeUnplayedFiltered() {
   const sort = el.sortBy.value;
   const q = el.searchBox.value.trim().toLowerCase();
   let list = state.unplayed.slice();
@@ -138,29 +146,103 @@ function applyUnplayedFilters() {
     const ra = a.rating || {}, rb = b.rating || {};
     return (rb.score || 0) - (ra.score || 0) || (rb.total || 0) - (ra.total || 0);
   });
-  renderGrid(el.gridUnplayed, list, renderUnplayedCard);
+  return list;
 }
 
-function renderGrid(container, list, renderFn) {
+/* ---------------- 分页渲染 ---------------- */
+function renderPaginated(container, allItems, page, renderFn, pager) {
   container.innerHTML = "";
-  if (!list.length) { setStatus("这里空空如也～"); return; }
+  const total = allItems.length;
+  if (!total) {
+    setStatus("这里空空如也～");
+    pager.innerHTML = "";
+    return;
+  }
   setStatus("");
+  const totalPages = Math.ceil(total / state.pageSize);
+  const p = Math.min(Math.max(1, page), totalPages);
+
+  const start = (p - 1) * state.pageSize;
+  const pageItems = allItems.slice(start, start + state.pageSize);
+
   const frag = document.createDocumentFragment();
-  list.forEach(item => frag.appendChild(renderFn(item)));
+  pageItems.forEach(item => frag.appendChild(renderFn(item)));
   container.appendChild(frag);
+
+  // 分页控件
+  pager.innerHTML = `
+    <button class="pg-btn" data-act="prev" ${p <= 1 ? "disabled" : ""}>‹ 上一页</button>
+    <span class="pg-info">第 ${p} / ${totalPages} 页 · 共 ${total} 条</span>
+    <button class="pg-btn" data-act="next" ${p >= totalPages ? "disabled" : ""}>下一页 ›</button>
+    <label class="pg-size">每页
+      <select class="pg-select">
+        <option value="50" ${state.pageSize === 50 ? "selected" : ""}>50</option>
+        <option value="100" ${state.pageSize === 100 ? "selected" : ""}>100</option>
+      </select>
+    </label>`;
 }
 
+function applyMine(resetPage = false) {
+  if (resetPage) state.pageMine = 1;
+  state.filteredMine = computeMineFiltered();
+  renderPaginated(el.gridMine, state.filteredMine, state.pageMine, renderMyCard, pagerMine);
+}
+
+function applyUnplayed(resetPage = false) {
+  if (resetPage) state.pageUnplayed = 1;
+  state.filteredUnplayed = computeUnplayedFiltered();
+  renderPaginated(el.gridUnplayed, state.filteredUnplayed, state.pageUnplayed, renderUnplayedCard, pagerUnplayed);
+}
+
+/* ---------------- 分页控件（动态创建，插在网格后） ---------------- */
+function makePager(onChange) {
+  const div = document.createElement("div");
+  div.className = "pagination";
+  div.addEventListener("click", (e) => {
+    const btn = e.target.closest(".pg-btn");
+    if (!btn || btn.disabled) return;
+    onChange(btn.dataset.act === "prev" ? -1 : 1, null);
+  });
+  div.addEventListener("change", (e) => {
+    if (e.target.classList.contains("pg-select")) {
+      onChange(0, Number(e.target.value));
+    }
+  });
+  return div;
+}
+
+let pagerMine, pagerUnplayed;
+
+function setupPagers() {
+  pagerMine = makePager((delta, size) => {
+    if (size) { state.pageSize = size; state.pageMine = 1; }
+    else state.pageMine += delta;
+    applyMine();
+  });
+  pagerUnplayed = makePager((delta, size) => {
+    if (size) { state.pageSize = size; state.pageUnplayed = 1; }
+    else state.pageUnplayed += delta;
+    applyUnplayed();
+  });
+  el.gridMine.after(pagerMine);
+  el.gridUnplayed.after(pagerUnplayed);
+}
+
+/* ---------------- 标签页切换 ---------------- */
 function switchTab(tab) {
   state.activeTab = tab;
   el.tabs.forEach(t => t.classList.toggle("active", t.dataset.tab === tab));
   const mine = tab === "mine";
   el.gridMine.classList.toggle("hidden", !mine);
   el.gridUnplayed.classList.toggle("hidden", mine);
+  pagerMine.classList.toggle("hidden", !mine);
+  pagerUnplayed.classList.toggle("hidden", mine);
   el.filterStatusWrap.style.display = mine ? "" : "none";
-  if (mine) applyMineFilters();
-  else applyUnplayedFilters();
+  if (mine) applyMine();
+  else applyUnplayed();
 }
 
+/* ---------------- 加载 ---------------- */
 async function loadAll() {
   setStatus("正在加载数据…");
   try {
@@ -175,7 +257,7 @@ async function loadAll() {
     const times = [mine.updated_at, gal.updated_at].filter(Boolean).map(formatDate).join(" / ");
     if (times) el.snapshotTime.textContent = ` · 数据更新于 ${times}`;
 
-    applyMineFilters();
+    applyMine(true);
   } catch (e) {
     console.error(e);
     setStatus("加载失败：" + e.message + "（数据文件可能还没生成，请先在 Actions 跑一次抓取）", true);
@@ -194,10 +276,12 @@ function formatDate(iso) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+/* ---------------- 事件 ---------------- */
 el.tabs.forEach(t => t.addEventListener("click", () => switchTab(t.dataset.tab)));
-el.filterStatus.addEventListener("change", applyMineFilters);
-el.filterType.addEventListener("change", applyMineFilters);
-el.sortBy.addEventListener("change", () => (state.activeTab === "mine" ? applyMineFilters() : applyUnplayedFilters()));
-el.searchBox.addEventListener("input", () => (state.activeTab === "mine" ? applyMineFilters() : applyUnplayedFilters()));
+el.filterStatus.addEventListener("change", () => applyMine(true));
+el.filterType.addEventListener("change", () => applyMine(true));
+el.sortBy.addEventListener("change", () => (state.activeTab === "mine" ? applyMine(true) : applyUnplayed(true)));
+el.searchBox.addEventListener("input", () => (state.activeTab === "mine" ? applyMine(true) : applyUnplayed(true)));
 
+setupPagers();
 loadAll();
