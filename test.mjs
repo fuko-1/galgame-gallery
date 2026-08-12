@@ -1,43 +1,28 @@
-const API = "https://api.bgm.tv/v0";
-const UA = { "User-Agent": "fuko-test/1.0" };
+const UA = {
+  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+  "Accept-Language": "zh-CN,zh;q=0.9",
+};
 
-// 方式1：搜索 API + tag 过滤（当前方案，确认是否真只有36）
-async function test1() {
-  const res = await fetch(`${API}/search/subjects`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", ...UA },
-    body: JSON.stringify({ keyword: "", sort: "rank", filter: { type: [4], tag: ["Galgame"] }, limit: 100, offset: 0 }),
-  });
-  const d = await res.json();
-  console.log("[方式1 搜索API+tag] total =", d.total, " 本页 =", (d.data || []).length);
-}
+async function test() {
+  const url = "https://bgm.tv/game/tag/Galgame?sort=collect&page=1";
+  const res = await fetch(url, { headers: UA });
+  console.log("HTTP 状态:", res.status);
+  const html = await res.text();
+  console.log("HTML 长度:", html.length);
 
-// 方式2：搜索 API，关键词=Galgame，不限 tag，看总数
-async function test2() {
-  const res = await fetch(`${API}/search/subjects`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", ...UA },
-    body: JSON.stringify({ keyword: "Galgame", sort: "rank", filter: { type: [4] }, limit: 100, offset: 0 }),
-  });
-  const d = await res.json();
-  console.log("[方式2 搜索API+关键词] total =", d.total, " 本页 =", (d.data || []).length);
-}
+  // 提取条目 id：链接形如 /subject/12345
+  const ids = [...html.matchAll(/\/subject\/(\d+)/g)].map(m => m[1]);
+  const uniq = [...new Set(ids)];
+  console.log("本页提取到条目 id 数量:", uniq.length);
+  console.log("前几个 id:", uniq.slice(0, 10).join(", "));
 
-// 方式3：搜索 API + tag，用 meta_tags 字段名（v0 的另一个写法）
-async function test3() {
-  const res = await fetch(`${API}/search/subjects`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", ...UA },
-    body: JSON.stringify({ keyword: "", sort: "rank", filter: { type: [4], meta_tags: ["Galgame"] }, limit: 100, offset: 0 }),
-  });
-  const d = await res.json();
-  console.log("[方式3 搜索API+meta_tags] total =", d.total, " 本页 =", (d.data || []).length);
-}
-
-(async () => {
-  for (const [name, fn] of [["方式1", test1], ["方式2", test2], ["方式3", test3]]) {
-    try { await fn(); } catch (e) { console.log(`[${name}] 错误:`, e.message); }
-    await new Promise(r => setTimeout(r, 500));
+  // 看看有没有被 Cloudflare 拦
+  if (html.includes("Just a moment") || html.includes("challenge") || html.length < 2000) {
+    console.log("⚠️ 可能被 Cloudflare 拦截了！HTML 开头:");
+    console.log(html.slice(0, 500));
+  } else {
+    console.log("✅ 看起来正常抓到网页了");
   }
-  console.log("=== 测试完成 ===");
-})();
+}
+
+test().catch(e => console.log("错误:", e.message));
