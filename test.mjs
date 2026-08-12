@@ -4,25 +4,20 @@ const UA = {
 };
 
 async function test() {
-  const url = "https://bgm.tv/game/tag/Galgame?sort=collect&page=1";
-  const res = await fetch(url, { headers: UA });
-  console.log("HTTP 状态:", res.status);
+  const res = await fetch("https://bgm.tv/game/tag/Galgame?sort=collect&page=1", { headers: UA });
   const html = await res.text();
-  console.log("HTML 长度:", html.length);
 
-  // 提取条目 id：链接形如 /subject/12345
-  const ids = [...html.matchAll(/\/subject\/(\d+)/g)].map(m => m[1]);
-  const uniq = [...new Set(ids)];
-  console.log("本页提取到条目 id 数量:", uniq.length);
-  console.log("前几个 id:", uniq.slice(0, 10).join(", "));
-
-  // 看看有没有被 Cloudflare 拦
-  if (html.includes("Just a moment") || html.includes("challenge") || html.length < 2000) {
-    console.log("⚠️ 可能被 Cloudflare 拦截了！HTML 开头:");
-    console.log(html.slice(0, 500));
+  // 找到列表区域。Bangumi 标签页条目一般在 class="item" 的 li 里
+  const liMatch = html.match(/<li[^>]*class="[^"]*item[^"]*"[^>]*>([\s\S]*?)<\/li>/);
+  if (liMatch) {
+    console.log("=== 单个条目 HTML（截取前 1500 字）===");
+    console.log(liMatch[0].slice(0, 1500));
   } else {
-    console.log("✅ 看起来正常抓到网页了");
+    console.log("没找到 li.item，打印 subject 链接附近内容：");
+    const idx = html.indexOf("/subject/");
+    console.log(html.slice(idx - 200, idx + 1300));
   }
+  console.log("=== 结束 ===");
 }
 
 test().catch(e => console.log("错误:", e.message));
