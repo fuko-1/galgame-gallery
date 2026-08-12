@@ -1,82 +1,106 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-const API = "https://api.bgm.tv/v0/search/subjects";
 const OUT = path.resolve("data/galgame-list.json");
-const PAGE = 100;
-const SLEEP_MS = 400;
-const MAX_PAGES = 500;
-
-// Galgame 相关标签（覆盖全一点，合并去重）
-const TAGS = ["Galgame", "galgame", "GALGAME", "视觉小说", "ADV", "文字冒险"];
+const BASE = "https://bgm.tv/game/tag/Galgame?sort=collect&page=";
+const UA = {
+  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+  "Accept-Language": "zh-CN,zh;q=0.9",
+};
+const SLEEP_MS = 350;
+const MAX_PAGES = 700;   // 634 页 + 余量
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-function slim(s) {
-  return {
-    id: s.id,
-    name: s.name,
-    name_cn: s.name_cn,
-    date: s.date || "",
-    platform: s.platform || "",
-    images: s.images ? { small: s.images.small, grid: s.images.grid } : undefined,
-    rating: s.rating ? { score: s.rating.score, total: s.rating.total } : undefined,
-  };
-}
+/** 从单页 HTML 解析出所有条目 */
+function parsePage(html) {
+  const items = [];
+  const liRegex = /<li id="item_(\d+)"[^>]*>([\s\S]*?)<\/li>/g;
+  let m;
+  while ((m = liRegex.exec(html)) !== null) {
+    const id = Number(m[1]);
+    const block = m[2];
 
-async function fetchPage(tag, offset) {
-  const body = {
-    keyword: "",
-    sort: "rank",
-    filter: { type: [4], tag: [tag] },
-    limit: PAGE,
-    offset: offset,
-  };
-  const res = await fetch(API, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "User-Agent": "fuko-galgame-gallery/1.0 (https://github.com/)",
-    },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`搜索接口返回 ${res.status}：${text.slice(0, 200)}`);
-  }
-  return res.json();
-}
+    // 标题
+    const titleM = block.match(/<a href="\/subject\/\d+" class="l">([\s\S]*?)<\/a>/);
+    const name = titleM ? decodeEntities(titleM[1].trim()) : "";
 
-async function fetchTag(tag) {
-  const out = [];
-  for (let page = 0; page < MAX_PAGES; page++) {
-    const offset = page * PAGE;
-    let data;
-    try {
-      data = await fetchPage(tag, offset);
-    } catch (e) {
-      console.error(`[${tag}] 第 ${page + 1} 页失败：`, e.message);
-      await sleep(1500);
-      data = await fetchPage(tag, offset);
+    // 信息行：日期 / 平台 / 类型 / 会社
+    const infoM = block.match(/<p class="info tip">([\s\S]*?)<\/p>/);
+    let date = "", platform = "";
+    if (infoM) {
+      const parts = decodeEntities(infoM[1]).split("/").map(s => s.trim());
+      date = /^\d{4}-\d{2}-\d{2}$/.test(parts[0]) ? parts[0] : "";
+      platform = parts[1] || "";
     }
-    const list = (data.data || []).map(slim);
-    out.push(...list);
-    if (list.length < PAGE) break;
-    await sleep(SLEEP_MS);
+
+    // 封面
+    const imgM = block.match(/<img src="([^"]+)" class="cover"/);
+    let cover = imgM ? imgM[1] : "";
+    if (cover.includes("no_icon_subject")) cover = "";
+    if (cover.startsWith("/")) cover = "https://bgm.tv" + cover;
+    if (cover.startsWith("//")) cover = "https:" + cover;
+
+    // 评分：<span class="sstarsN"></span> 或 fade，以及评分人数
+    let score = 0, total = 0;
+    const starM = block.match(/<span class="starstop-s"><span class="starlight stop(\d+)"/);
+    if (starM) score = Number(starM[1]);          // stop1~stop10
+    const totalM = block.match(/\((\d+)人评分\)/);
+    if (totalM) total = Number(totalM[1]);
+
+    items.push({
+      id,
+      name,
+      name_cn: "",
+      date,
+      platform,
+      images: cover ? { small: cover, grid: cover } : undefined,
+      rating: total > 0 ? { score, total } : undefined,
+    });
   }
-  console.log(`[${tag}] 抓到 ${out.length} 条`);
-  return out;
+  return items;
+}
+
+/** 简单的 HTML 实体反转义 */
+function decodeEntities(s) {
+  return s
+    .replace(/&gt;/g, ">").replace(/&lt;/g, "<")
+    .replace(/&amp;/g, "&").replace(/&quot;/g, '"')
+    .replace(/&#39;|&apos;/g, "'").replace(/&nbsp;/g, " ");
+}
+
+async function fetchPage(page) {
+  const res = await fetch(BASE + page, { headers: UA });
+  if (!res.ok) throw new Error(`第 ${page} 页 HTTP ${res.status}`);
+  return res.text();
 }
 
 async function main() {
   const map = new Map();
-  for (const tag of TAGS) {
-    const list = await fetchTag(tag);
-    for (const s of list) if (s && s.id) map.set(s.id, s);
+  let emptyStreak = 0;
+  for (let page = 1; page <= MAX_PAGES; page++) {
+    let html;
+    try {
+      html = await fetchPage(page);
+    } catch (e) {
+      console.error(`第 ${page} 页失败：`, e.message);
+      await sleep(1500);
+      html = await fetchPage(page);
+    }
+    const items = parsePage(html);
+    for (const it of items) if (!map.has(it.id)) map.set(it.id, it);
+    console.log(`第 ${page} 页：本页 ${items.length} 条，累计 ${map.size} 条`);
+
+    if (items.length === 0) {
+      emptyStreak++;
+      if (emptyStreak >= 2) { console.log("连续空页，判定抓完"); break; }
+    } else {
+      emptyStreak = 0;
+    }
     await sleep(SLEEP_MS);
   }
-  const subjects = [...map.values()];
 
+  const subjects = [...map.values()];
   const payload = {
     updated_at: new Date().toISOString(),
     count: subjects.length,
