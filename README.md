@@ -77,7 +77,7 @@ npm run validate:data
 
 Windows 首次设置：
 
-1. 在 [Bangumi 开发者页面](https://bgm.tv/dev/app) 登录 `config.json` 中的账号（当前 `koberi`），创建 Access Token，按需要选择有效期。
+1. 在 [Bangumi 个人令牌页面](https://next.bgm.tv/demo/access-token) 登录 `config.json` 中的账号（当前 `koberi`），点击「创建个人令牌」，按需要选择有效期（7 至 365 天）。
 2. 在项目目录运行 `npm run auth:setup`，将令牌粘贴到隐藏输入提示中并按回车。不要发到聊天、写入前端、`config.json` 或仓库文件。
 3. 脚本先通过 `/v0/me` 验证账号，再用 Windows DPAPI 加密保存到 `%LOCALAPPDATA%/galgame-gallery/bangumi-token.dpapi`，并用已登录的 GitHub CLI 设置 `fuko-1/galgame-gallery` 的 Actions Secret `BANGUMI_ACCESS_TOKEN`。随后补全首批 200 个缺图条目，优先推荐游戏。本地抓取以后自动读取；GitHub 每日工作流通过 Secret 注入。工作流更改需合并到默认分支才能用于每日计划。
 

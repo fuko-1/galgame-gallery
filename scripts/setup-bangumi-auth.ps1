@@ -7,7 +7,7 @@ $taskRoot = Split-Path -Parent $PSScriptRoot
 Set-Location -LiteralPath $taskRoot
 $credentialDirectory = Join-Path $env:LOCALAPPDATA 'galgame-gallery'
 $credentialFile = Join-Path $credentialDirectory 'bangumi-token.dpapi'
-Write-Host '在 https://bgm.tv/dev/app 登录 koberi，创建 Access Token。'
+Write-Host '在 https://next.bgm.tv/demo/access-token 登录 koberi，点击创建个人令牌。'
 Write-Host '输入会隐藏；令牌由 Windows 加密保存在网站目录之外。不要把令牌发到聊天或写入 config.json。'
 if ($GitHub) {
     Write-Host '本次还会将令牌保存为 fuko-1/galgame-gallery 的 GitHub Actions Secret BANGUMI_ACCESS_TOKEN。'
