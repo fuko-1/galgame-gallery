@@ -20,10 +20,11 @@
   <div class="tabs" role="tablist">
     <button class="tab active" id="tab-mine" data-tab="mine" role="tab" aria-selected="true" aria-controls="grid-mine">我的评分</button>
     <button class="tab" id="tab-unplayed" data-tab="unplayed" role="tab" aria-selected="false" aria-controls="grid-unplayed">未收藏的 Galgame</button>
+    <button class="tab" id="tab-recommend" data-tab="recommend" role="tab" aria-selected="false" aria-controls="grid-recommend">游戏推荐</button>
   </div>
 
   <!-- ===================== 工具栏 ===================== -->
-  <div class="toolbar">
+  <div class="toolbar" id="main-toolbar">
     <!-- 状态筛选（仅「我的评分」页用） -->
     <label class="tool tool-status" id="tool-status-wrap">
       状态
@@ -63,6 +64,26 @@
     <input id="search-box" class="tool search" type="search" aria-label="搜索条目" placeholder="搜索标题 / 短评…" />
   </div>
 
+  <div id="recommend-controls" class="recommend-controls" hidden>
+    <div>
+      <h2>下一部玩什么？</h2>
+      <p>根据你的评分、剧本作者、开发商和题材挑选。排除已玩作品的不同演绎与版本，保留续集和外传。</p>
+    </div>
+    <div class="recommend-actions">
+      <label class="tool">推荐方向
+        <select id="recommend-mode">
+          <option value="personal">适合我的</option>
+          <option value="sequels">续集与外传</option>
+          <option value="quality">口碑优先</option>
+        </select>
+      </label>
+      <button class="pg-btn" id="recommend-next">换一批</button>
+      <button class="pg-btn" id="recommend-restore" hidden>恢复已隐藏</button>
+      <span id="recommend-batch" class="pg-info"></span>
+    </div>
+    <p id="recommend-summary" class="recommend-summary"></p>
+  </div>
+
   <!-- ===================== 内容区 ===================== -->
   <main>
     <p id="unplayed-note" class="list-note" hidden>来自 Bangumi 用户标注的 Galgame 标签清单；排除我的全部收藏状态。</p>
@@ -74,6 +95,7 @@
 
     <!-- 列表：未收藏的 Galgame -->
     <section id="grid-unplayed" class="card-grid hidden" role="tabpanel" aria-labelledby="tab-unplayed"></section>
+    <section id="grid-recommend" class="card-grid hidden" role="tabpanel" aria-labelledby="tab-recommend"></section>
   </main>
 
   <footer class="site-footer">
@@ -81,6 +103,6 @@
     <span id="snapshot-time"></span>
   </footer>
 
-  <script src="app.js"></script>
+  <script type="module" src="app.js"></script>
 </body>
 </html>

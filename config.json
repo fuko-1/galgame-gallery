@@ -15,5 +15,8 @@
     "subjectType": 4,
     "tag": "Galgame",
     "snapshotFile": "data/galgame-list.json"
+  },
+  "recommendations": {
+    "snapshotFile": "data/recommendation-metadata.json"
   }
 }

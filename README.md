@@ -6,12 +6,13 @@
 
 - **我的评分**：按收藏状态、作品类型筛选，搜索标题、原名或短评；按个人评分或标记时间排序。
 - **未收藏的 Galgame**：从 Bangumi 的 Galgame 用户标签集合中排除所有收藏状态，包括想玩、在玩、玩过、搁置和抛弃；按公共评分或发售日期排序。
+- **游戏推荐**：根据已玩评分、剧本作者、开发商和题材推荐未游玩作品。支持「适合我的」「续集与外传」「口碑优先」、每批 12 部和「不感兴趣」。隐藏保存在当前浏览器，可恢复。
 - 用户标签可能包含其他类型游戏，这份清单不是经过人工审核的严格 Galgame 分类。
 - Bangumi 和 2DFan 按钮仅为外部链接，本站不修改账户收藏或评分，也不获取 2DFan 账户数据。
 
 ## 运行
 
-需要 Node.js 24 或更新版本。
+需要 Node.js 24 或更新版本，以及 Python 3.11 或更新版本（用于官方档案裁剪和相关测试）。浏览网站不需要这两个运行环境。
 
 ```sh
 npm ci
@@ -36,8 +37,20 @@ python -m http.server 8000 --bind 127.0.0.1
 | `twodfan.searchUrlTemplate` | 搜索链接，使用 `{title}` 占位符 |
 | `galgame.tag` | 抓取的游戏用户标签 |
 | `galgame.snapshotFile` | 标签清单快照路径 |
+| `recommendations.snapshotFile` | 推荐关系、标签和制作人员快照路径 |
 
 更换用户名后需要重新抓取个人快照，页面不会把旧文件自动转换成新用户的数据。快照来自公开接口，请勿把访问令牌写进配置或提交到仓库。
+
+## 推荐规则
+
+推荐使用 [Bangumi 官方公开 Wiki 档案](https://github.com/bangumi/Archive)，关系与职位常量来自 [bangumi/common](https://github.com/bangumi/common)。不需要 Bangumi 访问令牌或第三方 AI 密钥。
+
+- 「不同演绎」「不同版本」「主版本」以及游戏之间的改编关系合并为同一作品，支持经中间版本连接的关系。玩过任一版本后排除同组其他版本；名称清理辅助识别未关联的 HD、重制、全语音等版本，保留续作编号和故事副标题。
+- 「续集」「外传」独立保留；玩过移植版也可以推荐原作关联的续作。合集不会把各部作品合并成一个组，推荐中排除合集条目。
+- 排除玩过、在玩、搁置和抛弃的作品及其版本；想玩仍是候选。排除未发售、无关系元数据、试玩版、评分不足 20 人或公共评分低于 6 的条目。同一未玩作品只出现一个版本。
+- 评分偏好按同一作品去重，结合共同剧本作者、开发商、题材，以及经过评分人数平滑的公共评分排序。低分作品会降低相应偏好；推荐理由引用真实个人评分和制作人员关系，不把共同作者说成相同故事。首批适度分散开发商。
+
+「不同演绎／版本」依赖社区维护的关系，名称辅助规则也可能漏掉未关联的别名。可用「不感兴趣」隐藏整组作品；新条目会在下一版官方档案中补入。推荐页按需下载元数据，加载失败不会影响个人评分或未收藏列表。
 
 ## 数据更新
 
@@ -45,11 +58,12 @@ python -m http.server 8000 --bind 127.0.0.1
 npm run fetch
 ```
 
-依次抓取个人收藏、游戏标签清单，再校验两份快照。也可分开运行：
+依次抓取个人收藏、游戏标签清单、检查官方推荐档案，再校验快照。也可分开运行：
 
 ```sh
 npm run fetch:mine
 npm run fetch:galgame
+npm run fetch:recommendations
 npm run validate:data
 ```
 
@@ -59,7 +73,9 @@ npm run validate:data
 
 前端读取仓库里的静态快照，**不是每次打开都实时同步 Bangumi**。页面显示快照更新时间；个人收藏和清单分别加载，个人页面不会等待完整清单下载。
 
-抓取会校验响应结构、分页完整性、唯一 ID、有效评分及数据量下降。请求超时、结构变化或异常缩水会失败；完整抓取与校验成功后才原子替换对应文件。在 Actions 中，两个抓取及发布校验全部成功后才提交数据，因此失败不会发布半成品。
+抓取会校验响应结构、分页完整性、唯一 ID、有效评分及数据量下降。请求超时、结构变化或异常缩水会失败；完整抓取与校验成功后才原子替换对应文件。在 Actions 中，全部抓取及发布校验成功后才提交数据，因此失败不会发布半成品。
+
+推荐档案通过官方 `aux/latest.json` 检查版本；摘要未变时保留现有元数据，官方每周更新后才重新下载几百 MB 的 ZIP。脚本核对大小与 SHA-256，流式读取所需文件，只提交裁剪后的约 3.8 MB 元数据。可用 `python scripts/update-recommendation-metadata.py --force` 强制重建，或使用 `--archive /path/to/official.zip` 读取已下载且摘要匹配的档案。
 
 如果本地设置了 HTTP_PROXY / HTTPS_PROXY 而 Node 无法连接，可在 Node 24 下使用 `node --use-env-proxy scripts/fetch-mine.mjs` 和 `node --use-env-proxy scripts/fetch-galgame.mjs`。不需要修改抓取代码。
 
@@ -75,10 +91,12 @@ GitHub Pages 使用 main 分支根目录。合并并推送更改后，等待 Pag
 
 ```text
 index.html / style.css / app.js  静态页面和交互
+recommendations.js              推荐排序、去重与过滤规则
 config.json                     页面和抓取共用配置
 scripts/fetch-mine.mjs           收藏 API 抓取、完整性校验
 scripts/fetch-galgame.mjs        标签 HTML 抓取、详情补全、完整性校验
 scripts/validate-data.mjs        发布前快照契约检查
+scripts/update-recommendation-metadata.py  官方档案裁剪与原子更新
 data/                           公开数据快照
 tests/                          离线回归测试和代表性 HTML 样本
 .github/workflows/              刷新、测试与验证工作流

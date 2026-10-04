@@ -2,8 +2,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import vm from "node:vm";
+import { recommendGames, validateRecommendationMetadata } from "../recommendations.js";
 
-const source = readFileSync(new URL("../app.js", import.meta.url), "utf8");
+const source = readFileSync(new URL("../app.js", import.meta.url), "utf8").replace(/^import .*?;\s*/, "");
 const html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
 const flush = () => new Promise(resolve => setImmediate(resolve));
 
@@ -45,15 +46,16 @@ const configuration = {
   bangumi: { username: "another-user", nickname: "测试用户", profileUrl: "https://bgm.tv/user/another-user", snapshotFile: "custom/mine.json" },
   twodfan: { profileUrl: "https://2dfan.com/users/123", searchUrlTemplate: "https://2dfan.com/subjects/search?keyword={title}&from=gallery" },
   galgame: { tag: "Galgame", snapshotFile: "custom/games.json" },
+  recommendations: { snapshotFile: "custom/recommendations.json" },
 };
 
-function start() {
+function start(storage = new Map()) {
   const elements = new Map([...html.matchAll(/\bid="([^"]+)"/g)].map(match => [match[1], new Element()]));
   for (const match of html.matchAll(/<select id="([^"]+)"[^>]*>([\s\S]*?)<\/select>/g)) {
     elements.get(match[1]).options = [...match[2].matchAll(/<option value="([^"]+)"[^>]*>([^<]*)<\/option>/g)]
       .map(option => ({ value: option[1], textContent: option[2] }));
   }
-  const tabs = ["mine", "unplayed"].map(name => {
+  const tabs = ["mine", "unplayed", "recommend"].map(name => {
     const element = elements.get(`tab-${name}`);
     element.dataset.tab = name;
     return element;
@@ -69,7 +71,8 @@ function start() {
     createDocumentFragment: () => Object.assign(new Element(), { fragment: true }),
   };
   const context = vm.createContext({
-    document, URL, console, window: { scrollTo() {} },
+    document, URL, console, window: { scrollTo() {} }, recommendGames, validateRecommendationMetadata,
+    localStorage: { getItem: key => storage.get(key), setItem: (key, value) => storage.set(key, value) },
     AbortSignal: {
       timeout(milliseconds) {
         assert.equal(milliseconds, 20_000);
@@ -127,8 +130,8 @@ function subject(id, extra = {}) {
 function collection(id, extra = {}) {
   return { subject: subject(id), type: 2, rate: 8, updated_at: "2026-01-01", ...extra };
 }
-async function loaded(mine = [collection(1)], gal = [subject(2)]) {
-  const app = start();
+async function loaded(mine = [collection(1)], gal = [subject(2)], storage) {
+  const app = start(storage);
   await app.reply("config.json", configuration);
   await app.reply("custom/mine.json", { collections: mine, updated_at: "2026-10-01" });
   await app.reply("custom/games.json", { subjects: gal, updated_at: "2026-10-02" });
@@ -320,4 +323,80 @@ test("a timed-out catalogue reports an error without hiding personal cards", asy
   app.tab("unplayed");
   assert.match(app.node("status-msg").textContent, /超时（20 秒）/);
   assert.equal(app.cards("unplayed").length, 0);
+});
+
+function recommendationSnapshot(games, overrides = {}) {
+  return { schema_version: 1, updated_at: "2026-10-05", source: { date: "2026-09-30" },
+    count: games.length, persons: { 10: "作者 <script>" },
+    subjects: Object.fromEntries(games.map(s => [s.id, { work_id: s.id, writers: [10], developers: [], tags: [],
+      is_galgame: true, prequels: [], parents: [], collection: false, date: "2025-01-01", ...overrides[s.id] }])),
+  };
+}
+
+test("recommendations load metadata only on demand, render reasons, and preserve the other tabs", async () => {
+  const games = [subject(1), subject(2, { rating: { score: 8, total: 50 } }), subject(3, { rating: { score: 8, total: 50 } })];
+  const app = await loaded([collection(1, { rate: 9 })], games);
+  app.tab("unplayed");
+  app.change("search-box", "游戏 3");
+  assert.equal(app.requested.length, 3);
+  app.tab("recommend");
+  assert.equal(app.node("main-toolbar").hidden, true);
+  assert.equal(app.node("unplayed-note").hidden, true);
+  assert.match(app.node("status-msg").textContent, /推荐资料/);
+  await app.reply("custom/recommendations.json", recommendationSnapshot(games, { 3: { work_id: 1 } }));
+  assert.equal(app.cards("recommend").length, 1);
+  assert.match(app.cards("recommend")[0].innerHTML, /作者 &lt;script&gt;/);
+  assert.doesNotMatch(app.cards("recommend")[0].innerHTML, /<script>/);
+  app.tab("mine");
+  assert.equal(app.cards("mine").length, 1);
+  app.tab("unplayed");
+  assert.equal(app.node("search-box").value, "游戏 3");
+});
+
+test("switching to recommendations before config loads waits for every dependency", async () => {
+  const app = start();
+  app.tab("recommend");
+  await app.reply("config.json", configuration);
+  const games = [subject(2, { rating: { score: 8, total: 50 } })];
+  await app.reply("custom/recommendations.json", recommendationSnapshot(games));
+  await app.reply("custom/games.json", { subjects: games });
+  assert.equal(app.cards("recommend").length, 0);
+  assert.match(app.node("status-msg").textContent, /个人收藏/);
+  await app.reply("custom/mine.json", { collections: [] });
+  assert.equal(app.cards("recommend").length, 1);
+});
+
+test("failed or malformed recommendation metadata cannot hide personal cards", async () => {
+  const app = await loaded();
+  app.tab("recommend");
+  await app.reply("custom/recommendations.json", { schema_version: 1, subjects: {} });
+  assert.match(app.node("status-msg").textContent, /推荐关系数据加载失败/);
+  assert.equal(app.cards("recommend").length, 0);
+  app.tab("mine");
+  assert.equal(app.cards("mine").length, 1);
+  assert.equal(app.node("status-msg").classList.contains("hidden"), true);
+});
+
+test("recommendation batches, sequel filtering, and hiding persist and can be restored", async () => {
+  const games = Array.from({ length: 16 }, (_, i) => subject(i + 2, { rating: { score: 8, total: 50 } }));
+  const metadata = recommendationSnapshot(games, { 2: { prequels: [1] } });
+  const storage = new Map();
+  const app = await loaded([collection(1)], games, storage);
+  app.tab("recommend");
+  await app.reply("custom/recommendations.json", metadata);
+  assert.equal(app.cards("recommend").length, 12);
+  app.node("recommend-next").dispatch("click");
+  assert.equal(app.cards("recommend").length, 4);
+  app.change("recommend-mode", "sequels");
+  assert.equal(app.cards("recommend").length, 1);
+  assert.match(app.cards("recommend")[0].innerHTML, /续集/);
+  app.node("grid-recommend").dispatch("click", { closest: () => ({ dataset: { hideWork: "2" } }) });
+  assert.equal(app.cards("recommend").length, 0);
+  assert.equal(JSON.parse(storage.get("galgame-gallery:hidden:another-user"))[0], 2);
+  const reloaded = await loaded([collection(1)], games, storage);
+  reloaded.tab("recommend");
+  await reloaded.reply("custom/recommendations.json", metadata);
+  assert.doesNotMatch(reloaded.cards("recommend").map(c => c.innerHTML).join(""), /data-hide-work="2"/);
+  reloaded.node("recommend-restore").dispatch("click");
+  assert.match(reloaded.cards("recommend").map(c => c.innerHTML).join(""), /data-hide-work="2"/);
 });

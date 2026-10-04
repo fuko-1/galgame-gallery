@@ -1,3 +1,5 @@
+import { recommendGames, validateRecommendationMetadata } from "./recommendations.js";
+
 let config;
 
 const TYPE_NAMES = { 1: "书籍", 2: "动画", 3: "音乐", 4: "游戏", 6: "三次元" };
@@ -8,6 +10,14 @@ const el = {
   statusMsg: document.getElementById("status-msg"),
   gridMine: document.getElementById("grid-mine"),
   gridUnplayed: document.getElementById("grid-unplayed"),
+  gridRecommend: document.getElementById("grid-recommend"),
+  toolbar: document.getElementById("main-toolbar"),
+  recommendControls: document.getElementById("recommend-controls"),
+  recommendMode: document.getElementById("recommend-mode"),
+  recommendNext: document.getElementById("recommend-next"),
+  recommendRestore: document.getElementById("recommend-restore"),
+  recommendBatch: document.getElementById("recommend-batch"),
+  recommendSummary: document.getElementById("recommend-summary"),
   tabs: document.querySelectorAll(".tab"),
   filterStatus: document.getElementById("filter-status"),
   filterStatusWrap: document.getElementById("tool-status-wrap"),
@@ -25,13 +35,18 @@ const state = {
   myCollections: [],
   galSubjects: [],
   unplayed: [],
+  recommendationMetadata: null,
+  recommendationCache: null,
+  hiddenWorkIds: [],
   sources: {
     mine: { status: "loading", error: "", updatedAt: "" },
     gal: { status: "loading", error: "", updatedAt: "" },
+    meta: { status: "idle", error: "", updatedAt: "" },
   },
   views: {
     mine: { status: "2", type: "4", sort: "rate", query: "", page: 1, pageSize: 50 },
     unplayed: { sort: "rate", query: "", page: 1, pageSize: 50 },
+    recommend: { mode: "personal", batch: 0 },
   },
 };
 
@@ -113,20 +128,22 @@ function renderMyCard(collection) {
     </div>`);
 }
 
-function renderUnplayedCard(subject) {
+function renderUnplayedCard(subject, recommendation = null) {
   const rate = scoreOf(subject.rating?.score);
   const total = subject.rating?.total;
   const totalMarkup = Number.isInteger(total) && total >= 0 ? `<span class="card-meta">(${total}人)</span>` : "";
   return makeCard(`${coverMarkup(subject.images)}
     <div class="card-body">
-      <span class="badge type-4">游戏</span>
+      <span class="badge type-4">${recommendation?.kind === "sequel" ? "续集" : recommendation?.kind === "side_story" ? "外传 / 后续故事" : "游戏"}</span>
       ${cardHeading(subject)}
+      ${recommendation ? `<div class="recommend-reasons">${recommendation.reasons.map(reason => `<p>${escapeHtml(reason)}</p>`).join("")}</div>` : ""}
       ${rate ? `<div class="card-rate"><span class="stars">${starString(rate)}</span><span class="rate-num">${rate.toFixed(1)}</span>${totalMarkup}</div>` : '<div class="card-meta">暂无评分</div>'}
       <div class="card-meta">
         ${subject.date ? `<span>发售：${escapeHtml(subject.date)}</span>` : ""}
         ${subject.platform ? `<span>平台：${escapeHtml(subject.platform)}</span>` : ""}
       </div>
       ${searchLink(subject)}
+      ${recommendation ? `<button class="hide-recommendation" data-hide-work="${recommendation.workId}">不感兴趣</button>` : ""}
     </div>`);
 }
 
@@ -189,32 +206,78 @@ function activeSourceMessage() {
   const gal = state.sources.gal;
   if (mine.status === "error") return {
     text: state.activeTab === "mine" ? `个人收藏加载失败：${mine.error}`
-      : `无法生成未收藏清单：个人收藏加载失败，无法排除已收藏的作品。${mine.error}`,
+      : `无法生成${state.activeTab === "recommend" ? "推荐" : "未收藏清单"}：个人收藏加载失败，无法排除已收藏的作品。${mine.error}`,
     error: true,
   };
-  if (state.activeTab === "unplayed" && gal.status === "error") return { text: `Galgame 清单加载失败：${gal.error}`, error: true };
+  if (state.activeTab !== "mine" && gal.status === "error") return { text: `Galgame 清单加载失败：${gal.error}`, error: true };
   if (mine.status !== "ready") return { text: "正在加载个人收藏…" };
-  if (state.activeTab === "unplayed" && gal.status !== "ready") return { text: "正在加载 Galgame 清单…" };
+  if (state.activeTab !== "mine" && gal.status !== "ready") return { text: "正在加载 Galgame 清单…" };
+  if (state.activeTab === "recommend") {
+    if (state.sources.meta.status === "error") return { text: `推荐关系数据加载失败：${state.sources.meta.error}`, error: true };
+    if (state.sources.meta.status !== "ready") return { text: "正在加载作品关系与推荐资料…" };
+  }
   return null;
 }
 
 function renderActive() {
   const mine = state.activeTab === "mine";
-  const container = mine ? el.gridMine : el.gridUnplayed;
-  const pager = mine ? pagerMine : pagerUnplayed;
+  const recommending = state.activeTab === "recommend";
+  const container = recommending ? el.gridRecommend : mine ? el.gridMine : el.gridUnplayed;
+  const pager = recommending ? null : mine ? pagerMine : pagerUnplayed;
   const times = [];
   if (state.sources.mine.updatedAt) times.push(`个人收藏：${formatDate(state.sources.mine.updatedAt)}`);
   if (!mine && state.sources.gal.updatedAt) times.push(`Galgame 清单：${formatDate(state.sources.gal.updatedAt)}`);
+  if (recommending && state.recommendationMetadata) times.push(`关系档案：${formatDate(state.recommendationMetadata.source?.date)}`);
   el.snapshotTime.textContent = times.length ? ` · 数据更新于 ${times.join(" / ")}` : "";
   const message = activeSourceMessage();
   if (message) {
     container.innerHTML = "";
-    pager.innerHTML = "";
+    if (pager) pager.innerHTML = "";
+    if (recommending) {
+      el.recommendSummary.textContent = "";
+      el.recommendBatch.textContent = "";
+      el.recommendNext.disabled = true;
+    }
     setStatus(message.text, message.error);
+    return;
+  }
+  if (recommending) {
+    renderRecommendations();
     return;
   }
   renderPaginated(container, mine ? computeMineFiltered() : computeUnplayedFiltered(), state.views[state.activeTab],
     mine ? renderMyCard : renderUnplayedCard, pager);
+}
+
+function saveHiddenRecommendations() {
+  try { localStorage.setItem(`galgame-gallery:hidden:${config.bangumi.username}`, JSON.stringify(state.hiddenWorkIds)); } catch { /* In-memory hiding still works. */ }
+}
+
+function renderRecommendations() {
+  if (!state.recommendationCache) state.recommendationCache = recommendGames(state.galSubjects, state.myCollections,
+    state.recommendationMetadata, { mode: state.views.recommend.mode, hiddenWorkIds: state.hiddenWorkIds });
+  const { items, stats } = state.recommendationCache;
+  const view = state.views.recommend;
+  const batches = Math.max(1, Math.ceil(items.length / 12));
+  view.batch = Math.min(view.batch, batches - 1);
+  el.gridRecommend.innerHTML = "";
+  items.slice(view.batch * 12, view.batch * 12 + 12).forEach(item => el.gridRecommend.appendChild(renderUnplayedCard(item.subject, item)));
+  el.recommendNext.disabled = items.length <= 12;
+  el.recommendRestore.hidden = !state.hiddenWorkIds.length;
+  el.recommendBatch.textContent = items.length ? `第 ${view.batch + 1} / ${batches} 批 · ${items.length} 部候选` : "";
+  el.recommendSummary.textContent = `参考 ${stats.favorites} 部高分作品；已过滤 ${stats.excludedVersions} 个已玩 / 在玩等作品的其他版本。包含想玩，排除在玩、搁置和抛弃；只推荐已发售且至少 20 人评分的作品。`;
+  setStatus(items.length ? "" : "暂时没有符合条件的推荐。可以切换推荐方向或恢复已隐藏的作品。");
+}
+
+function ensureRecommendationMetadata() {
+  if (!config || state.sources.meta.status !== "idle") return;
+  state.sources.meta.status = "loading";
+  if (!config.recommendations?.snapshotFile) {
+    state.sources.meta.status = "error";
+    state.sources.meta.error = "未配置推荐资料路径";
+    return;
+  }
+  loadSnapshot("meta", config.recommendations.snapshotFile, "subjects");
 }
 
 function makePager(tab) {
@@ -245,6 +308,14 @@ el.gridUnplayed.after(pagerUnplayed);
 
 function syncControls() {
   const mine = state.activeTab === "mine";
+  const recommending = state.activeTab === "recommend";
+  el.toolbar.hidden = recommending;
+  el.recommendControls.hidden = !recommending;
+  el.unplayedNote.hidden = state.activeTab !== "unplayed";
+  if (recommending) {
+    el.recommendMode.value = state.views.recommend.mode;
+    return;
+  }
   const view = state.views[state.activeTab];
   el.filterStatusWrap.hidden = !mine;
   el.filterTypeWrap.hidden = !mine;
@@ -275,14 +346,17 @@ function switchTab(tab) {
     button.setAttribute("aria-selected", String(selected));
   });
   el.gridMine.classList.toggle("hidden", !mine);
-  el.gridUnplayed.classList.toggle("hidden", mine);
+  el.gridUnplayed.classList.toggle("hidden", tab !== "unplayed");
+  el.gridRecommend.classList.toggle("hidden", tab !== "recommend");
   pagerMine.classList.toggle("hidden", !mine);
-  pagerUnplayed.classList.toggle("hidden", mine);
+  pagerUnplayed.classList.toggle("hidden", tab !== "unplayed");
+  if (tab === "recommend") ensureRecommendationMetadata();
   syncControls();
   renderActive();
 }
 
 function changeView(key, value) {
+  if (state.activeTab === "recommend") return;
   if (state.activeTab !== "mine" && ["status", "type"].includes(key)) return;
   const view = state.views[state.activeTab];
   view[key] = value;
@@ -315,15 +389,22 @@ function applyConfig() {
     if (safeUrl) link.href = safeUrl;
   }
   el.unplayedNote.textContent = `来自 Bangumi 用户标注的「${config.galgame.tag || "Galgame"}」标签清单，可能包含其他类型游戏；排除我的全部收藏状态（含想玩、在玩、搁置和抛弃）。`;
+  try {
+    const saved = JSON.parse(localStorage.getItem(`galgame-gallery:hidden:${config.bangumi.username}`) || "[]");
+    state.hiddenWorkIds = Array.isArray(saved) ? saved.filter(id => Number.isSafeInteger(id) && id > 0) : [];
+  } catch { state.hiddenWorkIds = []; }
 }
 
 async function loadSnapshot(name, url, field) {
   const source = state.sources[name];
   try {
     const snapshot = await loadJSON(url);
-    if (!Array.isArray(snapshot[field])) throw new Error("快照格式不正确");
+    if (name === "meta") state.recommendationMetadata = validateRecommendationMetadata(snapshot);
+    else if (!Array.isArray(snapshot[field])) throw new Error("快照格式不正确");
     if (name === "mine") state.myCollections = snapshot.collections;
+    else if (name === "meta") state.recommendationMetadata = snapshot;
     else state.galSubjects = snapshot.subjects;
+    state.recommendationCache = null;
     source.status = "ready";
     source.updatedAt = snapshot.updated_at || "";
     if (state.sources.mine.status === "ready" && state.sources.gal.status === "ready") {
@@ -342,6 +423,7 @@ async function loadAll() {
     config = await loadJSON("config.json");
     if (!config?.bangumi?.snapshotFile || !config?.galgame?.snapshotFile) throw new Error("缺少快照文件路径");
     applyConfig();
+    if (state.activeTab === "recommend") ensureRecommendationMetadata();
   } catch (error) {
     state.configError = error.message;
     renderActive();
@@ -365,6 +447,36 @@ el.filterStatus.addEventListener("change", () => changeView("status", el.filterS
 el.filterType.addEventListener("change", () => changeView("type", el.filterType.value));
 el.sortBy.addEventListener("change", () => changeView("sort", el.sortBy.value));
 el.searchBox.addEventListener("input", () => changeView("query", el.searchBox.value));
+el.recommendMode.addEventListener("change", () => {
+  state.views.recommend.mode = el.recommendMode.value;
+  state.views.recommend.batch = 0;
+  state.recommendationCache = null;
+  renderActive();
+});
+el.recommendNext.addEventListener("click", () => {
+  if (el.recommendNext.disabled || !state.recommendationCache) return;
+  const batches = Math.ceil(state.recommendationCache.items.length / 12);
+  state.views.recommend.batch = (state.views.recommend.batch + 1) % batches;
+  renderActive();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+});
+el.gridRecommend.addEventListener("click", event => {
+  const button = event.target.closest("[data-hide-work]");
+  if (!button) return;
+  const work = Number(button.dataset.hideWork);
+  if (!Number.isSafeInteger(work) || state.hiddenWorkIds.includes(work)) return;
+  state.hiddenWorkIds.push(work);
+  state.recommendationCache = null;
+  saveHiddenRecommendations();
+  renderActive();
+});
+el.recommendRestore.addEventListener("click", () => {
+  state.hiddenWorkIds = [];
+  state.views.recommend.batch = 0;
+  state.recommendationCache = null;
+  saveHiddenRecommendations();
+  renderActive();
+});
 
 switchTab("mine");
 loadAll();

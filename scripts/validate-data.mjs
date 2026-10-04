@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { validateRecommendationMetadata } from "../recommendations.js";
 
 function check(condition, message) {
   if (!condition) throw new Error(message);
@@ -65,10 +66,14 @@ export function validateData(galgame, mine) {
 
 export async function main() {
   const config = JSON.parse(await readFile("config.json", "utf8"));
-  const [galgame, mine] = await Promise.all([
+  const [galgame, mine, recommendations] = await Promise.all([
     readFile(config.galgame.snapshotFile, "utf8").then(JSON.parse),
     readFile(config.bangumi.snapshotFile, "utf8").then(JSON.parse),
+    readFile(config.recommendations.snapshotFile, "utf8").then(JSON.parse),
   ]);
+  validateRecommendationMetadata(recommendations);
+  check(Number.isFinite(Date.parse(recommendations.source?.date)), "推荐档案缺少有效来源日期");
+  check(galgame.subjects.filter(s => recommendations.subjects[s.id]).length >= galgame.count * 0.85, "推荐元数据覆盖率不足 85%");
   console.log("数据校验通过：", JSON.stringify(validateData(galgame, mine)));
 }
 
