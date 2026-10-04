@@ -9,8 +9,11 @@
   },
   "scripts": {
     "fetch": "npm run fetch:mine && npm run fetch:galgame && npm run fetch:recommendations && npm run validate:data",
-    "fetch:mine": "node scripts/fetch-mine.mjs",
-    "fetch:galgame": "node scripts/fetch-galgame.mjs",
+    "fetch:mine": "node --use-env-proxy scripts/fetch-mine.mjs",
+    "fetch:galgame": "node --use-env-proxy scripts/fetch-galgame.mjs",
+    "fetch:covers": "node --use-env-proxy scripts/fetch-galgame.mjs --enrich-only",
+    "auth:setup": "powershell.exe -NoProfile -File scripts/setup-bangumi-auth.ps1 -GitHub",
+    "auth:check": "node --use-env-proxy scripts/check-bangumi-auth.mjs",
     "fetch:recommendations": "python scripts/update-recommendation-metadata.py",
     "test": "node --test tests/*.test.mjs && python -m unittest discover -s tests -p test_*.py",
     "validate:data": "node scripts/validate-data.mjs"

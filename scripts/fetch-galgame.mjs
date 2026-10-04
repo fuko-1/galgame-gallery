@@ -2,8 +2,9 @@ import { mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { load } from "cheerio";
+import { authorizationError, authorizationHeaders, BANGUMI_UA, loadAccessToken, verifyAccessToken } from "./bangumi-auth.mjs";
 
-const UA = "fuko-galgame-gallery/2.0 (https://github.com/fuko-1/galgame-gallery)";
+const UA = BANGUMI_UA;
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const text = (value) => String(value ?? "").replace(/\s+/g, " ").trim();
 const validScore = (value) => typeof value === "number" && Number.isFinite(value) && value > 0 && value <= 10;
@@ -109,13 +110,16 @@ export async function fetchTextWithRetry(url, {
   timeoutMs = 20_000,
   retries = 2,
   sleepImpl = sleep,
+  accessToken = "",
 } = {}) {
+  const auth = authorizationHeaders(url, accessToken);
   for (let attempt = 0; ; attempt++) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
       const response = await fetchImpl(url, {
-        headers: { "User-Agent": UA, "Accept-Language": "zh-CN,zh;q=0.9" },
+        headers: { "User-Agent": UA, "Accept-Language": "zh-CN,zh;q=0.9", ...auth },
+        ...(accessToken ? { redirect: "error" } : {}),
         signal: controller.signal,
       });
       if (!response.ok) {
@@ -126,7 +130,10 @@ export async function fetchTextWithRetry(url, {
       return await response.text();
     } catch (error) {
       const retryable = !error.status || [408, 425, 429].includes(error.status) || error.status >= 500;
-      if (!retryable || attempt >= retries) throw error;
+      if (!retryable || attempt >= retries) {
+        if (accessToken && !error.status) throw new Error("Bangumi 授权请求连接失败，请检查网络或代理后重试");
+        throw error;
+      }
     } finally {
       clearTimeout(timer);
     }
@@ -211,6 +218,7 @@ export async function fetchGalgameSnapshot({
   now = new Date(),
   timeoutMs = 20_000,
   retries = 2,
+  accessToken = "",
 } = {}) {
   const tag = config?.galgame?.tag || "Galgame";
   if (!Number.isInteger(maxPages) || maxPages < 1 || !Number.isInteger(enrichLimit) || enrichLimit < 0) {
@@ -261,8 +269,9 @@ export async function fetchGalgameSnapshot({
     // Preserve useful cached details without reintroducing bad URLs or zero scores.
     applyDetails(subject, old);
     if (old?.details_checked_at) subject.details_checked_at = old.details_checked_at;
+    if (old?.details_access) subject.details_access = old.details_access;
   }
-  await enrichMissingDetails(subjects, { config, enrichLimit, now, logger, ...requestOptions });
+  await enrichMissingDetails(subjects, { config, enrichLimit, now, logger, accessToken, ...requestOptions });
   return validateSnapshot(snapshot, { previous, ratedRows, parsedScores });
 }
 
@@ -270,26 +279,38 @@ export async function fetchGalgameSnapshot({
 export async function enrichMissingDetails(subjects, {
   config, enrichLimit = 50, now = new Date(), logger = console,
   fetchImpl = globalThis.fetch, sleepImpl = sleep, timeoutMs = 20_000, retries = 2,
+  accessToken = "", priorityIds = [],
 } = {}) {
   if (!Number.isInteger(enrichLimit) || enrichLimit < 0) throw new Error("enrichLimit 必须为非负整数");
-  const requestOptions = { fetchImpl, sleepImpl, timeoutMs, retries };
+  const requestOptions = { fetchImpl, sleepImpl, timeoutMs, retries, accessToken };
+  const accessMode = accessToken ? "authorized" : "public";
   const cacheAgeMs = 30 * 24 * 60 * 60 * 1_000;
+  const priorities = new Map(priorityIds.map((id, index) => [id, index]));
+  const apiBase = (config?.bangumi?.apiBase || "https://api.bgm.tv/v0").replace(/\/$/, "");
+  authorizationHeaders(apiBase + "/subjects/1", accessToken);
   const candidates = subjects.filter((subject) => !subject.images &&
-    !(Date.parse(subject.details_checked_at) > now.getTime() - cacheAgeMs)).slice(0, enrichLimit);
+    ((accessToken && subject.details_access !== "authorized") ||
+      !(Date.parse(subject.details_checked_at) > now.getTime() - cacheAgeMs)))
+    .sort((a, b) => (priorities.get(a.id) ?? Infinity) - (priorities.get(b.id) ?? Infinity))
+    .slice(0, enrichLimit);
+  let filled = 0;
   let failures = 0;
   for (const subject of candidates) {
-    const apiBase = (config?.bangumi?.apiBase || "https://api.bgm.tv/v0").replace(/\/$/, "");
     try {
       const details = JSON.parse(await fetchTextWithRetry(apiBase + "/subjects/" + subject.id, requestOptions));
       if (details.id !== subject.id || details.type !== 4) throw new Error("API 条目 ID 或类型不符");
       applyDetails(subject, details);
       subject.details_checked_at = now.toISOString();
+      subject.details_access = accessMode;
+      if (subject.images) filled++;
       failures = 0;
     } catch (error) {
+      if (accessToken && [401, 403].includes(error.status)) throw authorizationError(error.status);
       // Cache unavailable public details; transient failures can be retried next run.
       logger.warn("条目 " + subject.id + " 详情补全失败，保留已知字段：" + error.message);
       if (error.status === 404) {
         subject.details_checked_at = now.toISOString();
+        subject.details_access = accessMode;
         failures = 0;
       } else if (++failures >= 3) {
         logger.warn("连续三次详情补全失败，停止本轮可选补全");
@@ -298,6 +319,7 @@ export async function enrichMissingDetails(subjects, {
     }
     await sleepImpl(350);
   }
+  logger.log("详情补全：" + accessMode + "，新增 " + filled + " 张封面");
   return subjects;
 }
 
@@ -325,7 +347,8 @@ export async function main({ cwd = process.cwd(), fetchImpl = globalThis.fetch, 
   const config = JSON.parse(await readFile(path.resolve(cwd, "config.json"), "utf8"));
   const output = path.resolve(cwd, config.galgame?.snapshotFile || "data/galgame-list.json");
   const checkArgument = args.find((argument) => /^--check-page=\d+$/.test(argument));
-  if (args.some((argument) => argument !== "--dry-run" && argument !== checkArgument)) throw new Error("未知参数；可用 --dry-run 或 --check-page=1");
+  if (args.some((argument) => !["--dry-run", "--enrich-only", checkArgument].includes(argument))) throw new Error("未知参数；可用 --dry-run、--enrich-only 或 --check-page=1");
+  if (checkArgument && args.includes("--enrich-only")) throw new Error("--check-page 不能与 --enrich-only 同时使用");
   if (checkArgument) {
     const page = Number(checkArgument.split("=")[1]);
     const tag = config.galgame?.tag || "Galgame";
@@ -335,11 +358,29 @@ export async function main({ cwd = process.cwd(), fetchImpl = globalThis.fetch, 
   }
   const personalFile = path.resolve(cwd, config.bangumi?.snapshotFile || "data/my-collections.json");
   const [previous, personal] = await Promise.all([readOptionalJson(output), readOptionalJson(personalFile)]);
-  const snapshot = await fetchGalgameSnapshot({
+  const accessToken = options.accessToken ?? await loadAccessToken(options);
+  if (accessToken) {
+    await verifyAccessToken(accessToken, { username: config.bangumi.username, fetchImpl, ...options });
+    console.log("已自动使用 Bangumi 授权补全详情");
+  } else console.log("未配置 Bangumi 授权：受限条目可能缺少封面，可运行 npm run auth:setup");
+  const enrichLimit = Number(process.env.GALGAME_ENRICH_LIMIT ?? (accessToken ? 200 : 50));
+  let snapshot;
+  if (args.includes("--enrich-only")) {
+    validateSnapshot(previous);
+    snapshot = structuredClone(previous);
+    let priorityIds = [];
+    const metadata = await readOptionalJson(path.resolve(cwd, config.recommendations?.snapshotFile || "data/recommendation-metadata.json"));
+    if (metadata.schema_version === 1) {
+      const { recommendGames } = await import("../recommendations.js");
+      priorityIds = recommendGames(snapshot.subjects, personal.collections || [], metadata).items.map(item => item.subject.id);
+    }
+    await enrichMissingDetails(snapshot.subjects, { config, fetchImpl, enrichLimit, ...options, accessToken, priorityIds });
+    snapshot.details_updated_at = (options.now || new Date()).toISOString();
+    validateSnapshot(snapshot, { previous });
+  } else snapshot = await fetchGalgameSnapshot({
     config, previous, personal, fetchImpl,
     maxPages: Number(process.env.GALGAME_MAX_PAGES || 700),
-    enrichLimit: Number(process.env.GALGAME_ENRICH_LIMIT ?? 50),
-    ...options,
+    enrichLimit, ...options, accessToken,
   });
   if (!args.includes("--dry-run")) await writeSnapshotAtomic(output, snapshot);
   console.log("✅ Galgame 用户标签快照" + (args.includes("--dry-run") ? "验证通过（未写文件）" : "已更新") + "，共 " + snapshot.count + " 条");

@@ -30,6 +30,8 @@ jobs:
       - name: 运行回归测试
         run: npm test
       - name: 抓取并校验数据
+        env:
+          BANGUMI_ACCESS_TOKEN: ${{ secrets.BANGUMI_ACCESS_TOKEN }}
         run: npm run fetch
       - name: 提交有效快照
         run: |

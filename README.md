@@ -67,9 +67,25 @@ npm run fetch:recommendations
 npm run validate:data
 ```
 
-数据来源：个人收藏使用 `api.bgm.tv/v0`，全站候选清单解析 Bangumi 游戏用户标签页面。小数公共评分读取页面的数字评分，封面正确解析相对 URL；标签页缺失的封面先从已有详情和个人快照补全，再通过公开 API 每轮最多补全 50 个条目。尚未补全或 API 未提供图片的条目显示占位。零票或源站未公开分数的作品不会被捏造评分。
+数据来源：个人收藏使用 `api.bgm.tv/v0`，全站候选清单解析 Bangumi 游戏用户标签页面。小数公共评分读取页面的数字评分，封面正确解析相对 URL；标签页缺失的封面先从已有详情和个人快照补全，再通过 API 补全。未授权时每轮最多请求 50 个条目，已授权时默认 200 个。尚未补全或 API 未提供图片的条目显示占位。零票或源站未公开分数的作品不会被捏造评分。
 
 详情补全结果缓存在清单中，30 天内不会重复请求缺图条目。可通过 `GALGAME_ENRICH_LIMIT` 调整每轮请求上限（`0` 关闭额外 API 请求）。`GALGAME_MAX_PAGES` 默认 700；总页数超过此上限会报错，不会静默发布截断清单。单页只读检查可运行 `node scripts/fetch-galgame.mjs --check-page=1`，全量只读检查可运行 `node scripts/fetch-galgame.mjs --dry-run`。
+
+### 一次授权，更新时自动使用
+
+部分游戏被 Bangumi 标记为 NSFW，匿名 API 请求会返回 404。给后台抓取配置 Access Token 后，更新会自动携带授权，无需每次打开画廊或更新数据时登录。令牌以 Bangumi 设置的有效期为准；过期或撤销后需要重新配置，个人令牌不能自行续期。官方说明：[API 授权](https://github.com/bangumi/api/blob/master/docs-raw/How-to-Auth.md)、[NSFW 可见性](https://github.com/bangumi/api/blob/master/open-api/api.yml)。
+
+Windows 首次设置：
+
+1. 在 [Bangumi 开发者页面](https://bgm.tv/dev/app) 登录 `config.json` 中的账号（当前 `koberi`），创建 Access Token，按需要选择有效期。
+2. 在项目目录运行 `npm run auth:setup`，将令牌粘贴到隐藏输入提示中并按回车。不要发到聊天、写入前端、`config.json` 或仓库文件。
+3. 脚本先通过 `/v0/me` 验证账号，再用 Windows DPAPI 加密保存到 `%LOCALAPPDATA%/galgame-gallery/bangumi-token.dpapi`，并用已登录的 GitHub CLI 设置 `fuko-1/galgame-gallery` 的 Actions Secret `BANGUMI_ACCESS_TOKEN`。随后补全首批 200 个缺图条目，优先推荐游戏。本地抓取以后自动读取；GitHub 每日工作流通过 Secret 注入。工作流更改需合并到默认分支才能用于每日计划。
+
+若仅需要本地授权，运行 `powershell.exe -NoProfile -File scripts/setup-bangumi-auth.ps1`。其他系统或现有密钥管理工具可提供 `BANGUMI_ACCESS_TOKEN` 环境变量。环境变量优先于本地加密存储。若选择手动配置 GitHub，进入仓库 Settings → Secrets and variables → Actions，新建同名 Secret。
+
+`npm run auth:check` 只验证授权；`npm run fetch:covers` 仅补全现有快照的封面，不重新抓取所有标签页。代理环境可用 `node --use-env-proxy scripts/fetch-galgame.mjs --enrich-only`。已授权时立即重试先前匿名 404 的缓存；授权失效会报错并保留原有快照。
+
+令牌仅用于官方 HTTPS API 的游戏详情请求与账号验证，不发送给标签网页、图片 CDN 或其他 API 域名，不随重定向转发。个人收藏仍使用公开请求，避免把私密收藏发布到静态网站。仓库和网页只保存作品详情和封面 URL，不保存账号密码或令牌。授权能解决访问限制，但无法保证每个源站条目都有封面。
 
 前端读取仓库里的静态快照，**不是每次打开都实时同步 Bangumi**。页面显示快照更新时间；个人收藏和清单分别加载，个人页面不会等待完整清单下载。
 
