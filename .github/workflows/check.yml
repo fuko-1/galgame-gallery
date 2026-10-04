@@ -1,13 +1,15 @@
-name: 测试数据源
+name: 检查代码与数据
 
 on:
-  workflow_dispatch: {}
+  push:
+  pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  test:
+  check:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -18,5 +20,4 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
-      - name: 验证真实标签页与收藏 API
-        run: node test.mjs
+      - run: npm run validate:data

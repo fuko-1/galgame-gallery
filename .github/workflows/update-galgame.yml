@@ -2,33 +2,42 @@ name: 每日更新数据
 
 on:
   schedule:
-    - cron: "0 20 * * *"   # 北京时间凌晨 4:00
+    - cron: "17 20 * * *" # 北京时间 04:17；避开整点，实际启动可能延迟
   workflow_dispatch: {}
 
 permissions:
-  contents: write
+  contents: read
+
+concurrency:
+  group: data-update-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   fetch:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: write
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          node-version: 20
-
-      - name: 抓取全站 Galgame 清单
-        run: node scripts/fetch-galgame.mjs
-
-      - name: 抓取我的收藏
-        run: node scripts/fetch-mine.mjs
-
-      - name: 提交更新（有变化才提交）
+          ref: ${{ github.ref_name }}
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: 运行回归测试
+        run: npm test
+      - name: 抓取并校验数据
+        env:
+          BANGUMI_ACCESS_TOKEN: ${{ secrets.BANGUMI_ACCESS_TOKEN }}
+        run: npm run fetch
+      - name: 提交有效快照
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add data/galgame-list.json data/my-collections.json
+          git add data/galgame-list.json data/my-collections.json data/recommendation-metadata.json
           if git diff --staged --quiet; then
             echo "数据无变化，跳过提交"
           else

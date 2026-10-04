@@ -1,0 +1,7 @@
+node_modules/
+.cache/
+*.tmp
+__pycache__/
+.env
+.env.*
+*.dpapi

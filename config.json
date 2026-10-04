@@ -4,7 +4,8 @@
     "username": "koberi",
     "nickname": "fuko",
     "profileUrl": "https://bgm.tv/user/koberi",
-    "apiBase": "https://api.bgm.tv/v0"
+    "apiBase": "https://api.bgm.tv/v0",
+    "snapshotFile": "data/my-collections.json"
   },
   "twodfan": {
     "profileUrl": "https://2dfan.com/users/346524",
@@ -14,5 +15,8 @@
     "subjectType": 4,
     "tag": "Galgame",
     "snapshotFile": "data/galgame-list.json"
+  },
+  "recommendations": {
+    "snapshotFile": "data/recommendation-metadata.json"
   }
 }
