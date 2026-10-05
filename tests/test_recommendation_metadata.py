@@ -83,6 +83,45 @@ class MetadataTests(unittest.TestCase):
         self.assertFalse(metadata.verify_archive(archive, {**info, "size": info["size"] + 1}))
         self.assertFalse(metadata.verify_archive(archive, {**info, "digest": "sha256:" + "0" * 64}))
 
+    def test_real_type_evidence_rejects_unrelated_games_and_preserves_novels_and_hybrids(self):
+        fixture = Path(__file__).parent / "fixtures/galgame-types.json"
+        for case in json.loads(fixture.read_text(encoding="utf-8")):
+            with self.subTest(id=case["subject"]["id"], name=case["subject"]["name"]):
+                accepted, evidence = metadata.classify_galgame(case["subject"])
+                self.assertEqual(accepted, case["expected"])
+                self.assertTrue(evidence)
+
+    def test_generic_adventure_and_stray_tags_cannot_reclassify_an_unrelated_game(self):
+        for genre in ["AVG", "ADV", "AAVG", "ARPG", "RPG", "ACT"]:
+            row = {"infobox": f"|游戏类型= {genre}", "tags": [{"name": "开放世界", "count": 800}, {"name": "Galgame", "count": 1}]}
+            self.assertFalse(metadata.classify_galgame(row)[0], genre)
+        # A blank field must not consume the following line as the genre.
+        self.assertFalse(metadata.classify_galgame({"infobox": "|游戏类型=\n|游戏引擎= Visual Novel Engine"})[0])
+        self.assertFalse(metadata.classify_galgame({"infobox": "|游戏类型= FTG", "meta_tags": ["Galgame"], "tags": [{"name": "GAL", "count": 15}]})[0])
+        self.assertTrue(metadata.classify_galgame({"infobox": "|游戏类型= ADV＋ACT", "meta_tags": ["Galgame"]})[0])
+        self.assertTrue(metadata.classify_galgame({"infobox": "|游戏类型= Visual Novel"})[0])
+        self.assertTrue(metadata.classify_galgame({"infobox": "|游戏类型= 恋愛SLG"})[0])
+
+    def test_every_refresh_reapplies_type_flags_without_losing_covers_or_collections(self):
+        result = metadata.build_metadata(self.archive(), {1, 2, 3, 4}, {"digest": "test-digest"})
+        result["subjects"]["2"]["is_galgame"] = False
+        gallery = {"count": 3, "updated_at": "2026-10-05", "subjects": [{"id": 1, "images": {"small": "https://example.org/cover.jpg"}}, {"id": 2}, {"id": 999}]}
+        mine = {"count": 2, "collections": [{"subject_type": 4, "subject": {"id": 2}}, {"subject_type": 2, "subject": {"id": 3}}]}
+        for _ in range(2):
+            metadata.publish_classifications(gallery, mine, result, self.root / "gal.json", self.root / "mine.json")
+            saved = json.loads((self.root / "gal.json").read_text(encoding="utf-8"))
+            self.assertEqual([s["is_galgame"] for s in saved["subjects"]], [True, False, False])
+            self.assertEqual(saved["subjects"][0]["images"]["small"], "https://example.org/cover.jpg")
+            self.assertEqual(saved["updated_at"], "2026-10-05")
+            self.assertEqual(saved["count"], 3)
+            self.assertEqual(saved["galgame_classification"]["accepted_count"], 1)
+            self.assertFalse(mine["collections"][0]["subject"]["is_galgame"])
+            self.assertNotIn("is_galgame", mine["collections"][1]["subject"])
+            # Simulate the next fresh scrape stripping computed fields.
+            for s in gallery["subjects"]: s.pop("is_galgame")
+        with self.assertRaises(ValueError):
+            metadata.publish_classifications(gallery, mine, {**result, "classification_version": 0}, self.root / "gal.json", self.root / "mine.json")
+
 
 if __name__ == "__main__":
     unittest.main()

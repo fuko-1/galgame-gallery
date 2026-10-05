@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { validateData } from "../scripts/validate-data.mjs";
+import { validateClassification, validateData } from "../scripts/validate-data.mjs";
 
 function samples() {
   return {
@@ -37,4 +37,16 @@ test("empty or duplicate snapshots cannot pass publication checks", () => {
   gal.subjects[1].id = 1;
   assert.throws(() => validateData(gal, mine), /重复/);
   assert.throws(() => validateData({ ...gal, count: 0, subjects: [] }, mine), /不得为空/);
+});
+
+test("publication rejects stale, missing or inconsistent type classification", () => {
+  const metadata = { classification_version: 1, source: { digest: "fixture" }, subjects: { 1: { is_galgame: true }, 2: { is_galgame: false } } };
+  const stamp = { version: 1, source_digest: "fixture" };
+  const gal = { count: 3, subjects: [{ id: 1, is_galgame: true }, { id: 2, is_galgame: false }, { id: 3, is_galgame: false }], galgame_classification: { ...stamp, accepted_count: 1 } };
+  const mine = { collections: [{ subject_type: 4, subject: { id: 2, is_galgame: false } }], galgame_classification: stamp };
+  assert.deepEqual(validateClassification(gal, mine, metadata), { galgames: 1, filtered: 2 });
+  assert.throws(() => validateClassification({ ...gal, galgame_classification: undefined }, mine, metadata), /尚未完成/);
+  assert.throws(() => validateClassification({ ...gal, subjects: [{ id: 2, is_galgame: true }] }, mine, metadata), /不一致/);
+  assert.throws(() => validateClassification(gal, { ...mine, collections: [{ subject_type: 4, subject: { id: 2 } }] }, metadata), /不一致/);
+  assert.throws(() => validateClassification(gal, mine, { ...metadata, source: { digest: "other" } }), /来源不一致/);
 });

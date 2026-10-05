@@ -1,0 +1,870 @@
+[
+  {
+    "subject": {
+      "id": 283730,
+      "name": "Outer Wilds",
+      "infobox": "|游戏类型= AVG",
+      "meta_tags": [
+        "AVG",
+        "PC",
+        "游戏",
+        "NS",
+        "PS4",
+        "XboxOne",
+        "PS5",
+        "XSX"
+      ],
+      "tags": [
+        {
+          "name": "独立游戏",
+          "count": 631
+        },
+        {
+          "name": "科幻",
+          "count": 529
+        },
+        {
+          "name": "宇宙",
+          "count": 488
+        },
+        {
+          "name": "解谜",
+          "count": 461
+        },
+        {
+          "name": "探索",
+          "count": 358
+        },
+        {
+          "name": "PC",
+          "count": 357
+        },
+        {
+          "name": "神作",
+          "count": 226
+        },
+        {
+          "name": "STEAM",
+          "count": 172
+        },
+        {
+          "name": "AVG",
+          "count": 171
+        },
+        {
+          "name": "世纪第一探索Game",
+          "count": 130
+        },
+        {
+          "name": "2019",
+          "count": 100
+        }
+      ]
+    },
+    "expected": false
+  },
+  {
+    "subject": {
+      "id": 62229,
+      "name": "ゼルダの伝説 ブレス オブ ザ ワイルド",
+      "infobox": "|游戏类型= AAVG",
+      "meta_tags": [
+        "游戏",
+        "NS",
+        "AAVG",
+        "WiiU",
+        "NS2"
+      ],
+      "tags": [
+        {
+          "name": "任天堂",
+          "count": 2209
+        },
+        {
+          "name": "Switch",
+          "count": 1731
+        },
+        {
+          "name": "塞尔达",
+          "count": 1722
+        },
+        {
+          "name": "开放世界",
+          "count": 1458
+        },
+        {
+          "name": "神作",
+          "count": 912
+        },
+        {
+          "name": "NS",
+          "count": 840
+        },
+        {
+          "name": "ゼルダの伝説",
+          "count": 612
+        },
+        {
+          "name": "必买",
+          "count": 489
+        },
+        {
+          "name": "ARPG",
+          "count": 427
+        },
+        {
+          "name": "2017",
+          "count": 417
+        },
+        {
+          "name": "塞尔达传说",
+          "count": 312
+        }
+      ]
+    },
+    "expected": false
+  },
+  {
+    "subject": {
+      "id": 37141,
+      "name": "Baldur's Gate 3",
+      "infobox": "|游戏类型= CRPG",
+      "meta_tags": [
+        "Windows",
+        "PC",
+        "游戏",
+        "Mac",
+        "PS5",
+        "CRPG",
+        "XSX"
+      ],
+      "tags": [
+        {
+          "name": "CRPG",
+          "count": 694
+        },
+        {
+          "name": "PC",
+          "count": 399
+        },
+        {
+          "name": "龙与地下城",
+          "count": 385
+        },
+        {
+          "name": "博德之门",
+          "count": 361
+        },
+        {
+          "name": "LarianStudios",
+          "count": 321
+        },
+        {
+          "name": "RPG",
+          "count": 259
+        },
+        {
+          "name": "dnd",
+          "count": 211
+        },
+        {
+          "name": "2023",
+          "count": 198
+        },
+        {
+          "name": "奇幻",
+          "count": 181
+        },
+        {
+          "name": "STEAM",
+          "count": 133
+        },
+        {
+          "name": "神作",
+          "count": 106
+        }
+      ]
+    },
+    "expected": false
+  },
+  {
+    "subject": {
+      "id": 105699,
+      "name": "Bloodborne",
+      "infobox": "|游戏类型= ARPG",
+      "meta_tags": [
+        "ARPG",
+        "PS4",
+        "游戏"
+      ],
+      "tags": [
+        {
+          "name": "宫崎英高",
+          "count": 713
+        },
+        {
+          "name": "PS4",
+          "count": 666
+        },
+        {
+          "name": "FROMSOFTWARE",
+          "count": 464
+        },
+        {
+          "name": "血源",
+          "count": 398
+        },
+        {
+          "name": "克苏鲁",
+          "count": 352
+        },
+        {
+          "name": "ARPG",
+          "count": 321
+        },
+        {
+          "name": "血源诅咒",
+          "count": 213
+        },
+        {
+          "name": "ACT",
+          "count": 143
+        },
+        {
+          "name": "2015",
+          "count": 104
+        },
+        {
+          "name": "受苦",
+          "count": 81
+        },
+        {
+          "name": "魂系列",
+          "count": 78
+        }
+      ]
+    },
+    "expected": false
+  },
+  {
+    "subject": {
+      "id": 206733,
+      "name": "ファイアーエムブレム 風花雪月",
+      "infobox": "|游戏类型= SRPG",
+      "meta_tags": [
+        "SRPG",
+        "Galgame",
+        "游戏",
+        "NS"
+      ],
+      "tags": [
+        {
+          "name": "Switch",
+          "count": 363
+        },
+        {
+          "name": "NS",
+          "count": 339
+        },
+        {
+          "name": "任天堂",
+          "count": 316
+        },
+        {
+          "name": "战棋",
+          "count": 308
+        },
+        {
+          "name": "SRPG",
+          "count": 275
+        },
+        {
+          "name": "火纹",
+          "count": 243
+        },
+        {
+          "name": "火焰纹章",
+          "count": 221
+        },
+        {
+          "name": "2019",
+          "count": 136
+        },
+        {
+          "name": "JRPG",
+          "count": 129
+        },
+        {
+          "name": "SLG",
+          "count": 108
+        },
+        {
+          "name": "RPG",
+          "count": 60
+        }
+      ]
+    },
+    "expected": false
+  },
+  {
+    "subject": {
+      "id": 15912,
+      "name": "Portal 2",
+      "infobox": "|游戏类型= PUZ",
+      "meta_tags": [
+        "Linux",
+        "Mac",
+        "NS",
+        "PC",
+        "PS3",
+        "PUZ",
+        "Xbox360",
+        "游戏"
+      ],
+      "tags": [
+        {
+          "name": "解谜",
+          "count": 769
+        },
+        {
+          "name": "Valve",
+          "count": 617
+        },
+        {
+          "name": "PC",
+          "count": 447
+        },
+        {
+          "name": "FPS",
+          "count": 292
+        },
+        {
+          "name": "第一人称冒险",
+          "count": 244
+        },
+        {
+          "name": "STEAM",
+          "count": 221
+        },
+        {
+          "name": "益智",
+          "count": 188
+        },
+        {
+          "name": "没头脑和不高兴",
+          "count": 121
+        },
+        {
+          "name": "GlaDos",
+          "count": 105
+        },
+        {
+          "name": "傲娇",
+          "count": 85
+        },
+        {
+          "name": "2011",
+          "count": 80
+        }
+      ]
+    },
+    "expected": false
+  },
+  {
+    "subject": {
+      "id": 284100,
+      "name": "ELDEN RING",
+      "infobox": "|游戏类型= ARPG",
+      "meta_tags": [
+        "ARPG",
+        "PC",
+        "游戏",
+        "PS4",
+        "XboxOne",
+        "PS5",
+        "XSX"
+      ],
+      "tags": [
+        {
+          "name": "宫崎英高",
+          "count": 1265
+        },
+        {
+          "name": "魂系列",
+          "count": 1000
+        },
+        {
+          "name": "FROMSOFTWARE",
+          "count": 870
+        },
+        {
+          "name": "开放世界",
+          "count": 791
+        },
+        {
+          "name": "ARPG",
+          "count": 587
+        },
+        {
+          "name": "PC",
+          "count": 438
+        },
+        {
+          "name": "2022",
+          "count": 320
+        },
+        {
+          "name": "STEAM",
+          "count": 218
+        },
+        {
+          "name": "神作",
+          "count": 184
+        },
+        {
+          "name": "RPG",
+          "count": 153
+        },
+        {
+          "name": "PS5",
+          "count": 110
+        }
+      ]
+    },
+    "expected": false
+  },
+  {
+    "subject": {
+      "id": 13,
+      "name": "CLANNAD",
+      "infobox": "|游戏类型= 恋爱ADV",
+      "meta_tags": [
+        "PS3",
+        "PSP",
+        "Galgame",
+        "PS2",
+        "PC",
+        "Xbox360",
+        "游戏",
+        "ADV",
+        "NS",
+        "PSV",
+        "PS4"
+      ],
+      "tags": [
+        {
+          "name": "key",
+          "count": 2603
+        },
+        {
+          "name": "CLANNAD",
+          "count": 2048
+        },
+        {
+          "name": "Galgame",
+          "count": 1898
+        },
+        {
+          "name": "麻枝准",
+          "count": 1818
+        },
+        {
+          "name": "催泪弹",
+          "count": 912
+        },
+        {
+          "name": "家族",
+          "count": 772
+        },
+        {
+          "name": "人生",
+          "count": 754
+        },
+        {
+          "name": "亲情",
+          "count": 721
+        },
+        {
+          "name": "泣きゲー",
+          "count": 504
+        },
+        {
+          "name": "爱情",
+          "count": 315
+        },
+        {
+          "name": "PC",
+          "count": 299
+        }
+      ]
+    },
+    "expected": true
+  },
+  {
+    "subject": {
+      "id": 1457,
+      "name": "BALDR SKY Dive1 \"LostMemory\"",
+      "infobox": "|游戏类型= ACT+ADV",
+      "meta_tags": [
+        "ACT",
+        "ADV",
+        "Galgame",
+        "PC",
+        "游戏"
+      ],
+      "tags": [
+        {
+          "name": "Galgame",
+          "count": 1004
+        },
+        {
+          "name": "戯画",
+          "count": 923
+        },
+        {
+          "name": "ACT",
+          "count": 540
+        },
+        {
+          "name": "GIGA",
+          "count": 520
+        },
+        {
+          "name": "BALDRSKY",
+          "count": 445
+        },
+        {
+          "name": "菊池政治",
+          "count": 301
+        },
+        {
+          "name": "萝卜",
+          "count": 276
+        },
+        {
+          "name": "BALDR",
+          "count": 198
+        },
+        {
+          "name": "PC",
+          "count": 191
+        },
+        {
+          "name": "卑影ムラサキ",
+          "count": 127
+        },
+        {
+          "name": "GAL",
+          "count": 115
+        }
+      ]
+    },
+    "expected": true
+  },
+  {
+    "subject": {
+      "id": 12098,
+      "name": "BALDR SKY Dive2 \"RECORDARE\"",
+      "infobox": "|游戏类型= サイバーパンクACT＋ADV",
+      "meta_tags": [
+        "ACT",
+        "Galgame",
+        "PC",
+        "游戏",
+        "ADV"
+      ],
+      "tags": [
+        {
+          "name": "Galgame",
+          "count": 1108
+        },
+        {
+          "name": "GIGA",
+          "count": 628
+        },
+        {
+          "name": "戲畫",
+          "count": 579
+        },
+        {
+          "name": "ACT",
+          "count": 560
+        },
+        {
+          "name": "戯画",
+          "count": 397
+        },
+        {
+          "name": "菊池政治",
+          "count": 361
+        },
+        {
+          "name": "BALDR",
+          "count": 356
+        },
+        {
+          "name": "BALDR_SKY_Dive2_",
+          "count": 242
+        },
+        {
+          "name": "萝卜",
+          "count": 222
+        },
+        {
+          "name": "PC",
+          "count": 163
+        },
+        {
+          "name": "GAL",
+          "count": 115
+        }
+      ]
+    },
+    "expected": true
+  },
+  {
+    "subject": {
+      "id": 226254,
+      "name": "ランス10",
+      "infobox": "|游戏类型= 大型战争RPG",
+      "meta_tags": [
+        "Windows",
+        "RPG",
+        "Galgame",
+        "PC",
+        "游戏",
+        "R18"
+      ],
+      "tags": [
+        {
+          "name": "兰斯",
+          "count": 1352
+        },
+        {
+          "name": "alicesoft",
+          "count": 1101
+        },
+        {
+          "name": "Galgame",
+          "count": 872
+        },
+        {
+          "name": "RPG",
+          "count": 582
+        },
+        {
+          "name": "系列完结",
+          "count": 441
+        },
+        {
+          "name": "游戏性",
+          "count": 418
+        },
+        {
+          "name": "最终作",
+          "count": 406
+        },
+        {
+          "name": "完结作",
+          "count": 358
+        },
+        {
+          "name": "黄油",
+          "count": 282
+        },
+        {
+          "name": "PC",
+          "count": 260
+        },
+        {
+          "name": "卡牌",
+          "count": 239
+        }
+      ]
+    },
+    "expected": true
+  },
+  {
+    "subject": {
+      "id": 424578,
+      "name": "WHITE ALBUM2 EXTENDED EDITION",
+      "infobox": "|游戏类型= AVG",
+      "meta_tags": [
+        "AVG",
+        "PC",
+        "游戏"
+      ],
+      "tags": [
+        {
+          "name": "Galgame",
+          "count": 54
+        },
+        {
+          "name": "丸户史明",
+          "count": 35
+        },
+        {
+          "name": "leaf",
+          "count": 30
+        },
+        {
+          "name": "AVG",
+          "count": 18
+        },
+        {
+          "name": "丸戸史明",
+          "count": 17
+        },
+        {
+          "name": "GAL",
+          "count": 16
+        },
+        {
+          "name": "PC",
+          "count": 15
+        },
+        {
+          "name": "2018",
+          "count": 13
+        },
+        {
+          "name": "神作",
+          "count": 13
+        },
+        {
+          "name": "整合版",
+          "count": 12
+        },
+        {
+          "name": "三角恋",
+          "count": 11
+        }
+      ]
+    },
+    "expected": true
+  },
+  {
+    "subject": {
+      "id": 280440,
+      "name": "死月妖花～四月八日～",
+      "infobox": "|游戏类型= ADV",
+      "meta_tags": [
+        "PC",
+        "游戏",
+        "ADV",
+        "GL"
+      ],
+      "tags": [
+        {
+          "name": "悬疑",
+          "count": 389
+        },
+        {
+          "name": "同人",
+          "count": 334
+        },
+        {
+          "name": "AVG",
+          "count": 231
+        },
+        {
+          "name": "推理",
+          "count": 224
+        },
+        {
+          "name": "Galgame",
+          "count": 219
+        },
+        {
+          "name": "猎奇",
+          "count": 184
+        },
+        {
+          "name": "全年龄",
+          "count": 159
+        },
+        {
+          "name": "PC",
+          "count": 146
+        },
+        {
+          "name": "ADV",
+          "count": 112
+        },
+        {
+          "name": "百合",
+          "count": 102
+        },
+        {
+          "name": "第五大同人奇迹",
+          "count": 99
+        }
+      ]
+    },
+    "expected": true
+  },
+  {
+    "subject": {
+      "id": 23491,
+      "name": "極限脱出ADV 善人シボウデス",
+      "infobox": "|游戏类型= 極限脱出ADV",
+      "meta_tags": [
+        "3DS",
+        "ADV",
+        "PC",
+        "PS4",
+        "PSV",
+        "XSX",
+        "XboxOne",
+        "游戏"
+      ],
+      "tags": [
+        {
+          "name": "打越钢太郎",
+          "count": 249
+        },
+        {
+          "name": "极限脱出",
+          "count": 239
+        },
+        {
+          "name": "AVG",
+          "count": 213
+        },
+        {
+          "name": "悬疑",
+          "count": 186
+        },
+        {
+          "name": "3DS",
+          "count": 184
+        },
+        {
+          "name": "解谜",
+          "count": 140
+        },
+        {
+          "name": "打越鋼太郎",
+          "count": 97
+        },
+        {
+          "name": "科幻",
+          "count": 88
+        },
+        {
+          "name": "PSV",
+          "count": 82
+        },
+        {
+          "name": "chunsoft",
+          "count": 75
+        },
+        {
+          "name": "PC",
+          "count": 56
+        }
+      ]
+    },
+    "expected": true
+  }
+]

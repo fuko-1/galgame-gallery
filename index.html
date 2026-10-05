@@ -45,7 +45,8 @@
         <option value="all">全部</option>
         <option value="2">动画</option>
         <option value="1">书籍</option>
-        <option value="4" selected>游戏</option>
+        <option value="galgame" selected>Galgame</option>
+        <option value="4">全部游戏</option>
         <option value="3">音乐</option>
         <option value="6">三次元</option>
       </select>
@@ -67,7 +68,7 @@
   <div id="recommend-controls" class="recommend-controls" hidden>
     <div>
       <h2>下一部玩什么？</h2>
-      <p>根据你的评分、剧本作者、开发商和题材挑选。排除已玩作品的不同演绎与版本，保留续集和外传。</p>
+      <p>仅从通过类型筛选的 Galgame 与视觉小说中，按你的评分、作者和题材挑选。排除已玩作品的不同演绎与版本，保留续集和外传。</p>
     </div>
     <div class="recommend-actions">
       <label class="tool">推荐方向
@@ -86,7 +87,7 @@
 
   <!-- ===================== 内容区 ===================== -->
   <main>
-    <p id="unplayed-note" class="list-note" hidden>来自 Bangumi 用户标注的 Galgame 标签清单；排除我的全部收藏状态。</p>
+    <p id="unplayed-note" class="list-note" hidden>已结合游戏类型、Galgame 分类与标签共识筛选；排除我的全部收藏状态。</p>
     <!-- 加载 / 错误提示 -->
     <div id="status-msg" class="status-msg" role="status" aria-live="polite">加载中…</div>
 

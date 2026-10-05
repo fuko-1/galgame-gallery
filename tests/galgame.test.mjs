@@ -199,11 +199,11 @@ test("main honors configured filenames and a bad refresh preserves the old file"
   await writeFile(path.join(root, "config.json"), JSON.stringify(configured));
   await writeFile(path.join(root, "custom-mine.json"), JSON.stringify({ collections: [{ subject_id: 1, subject_type: 4,
     subject: { images: { small: "https://lain.bgm.tv/configured.jpg" } } }] }));
-  await main({ ...options, cwd: root, args: [], fetchImpl: async () => response(page(row(1))) });
+  await main({ ...options, accessToken: "", cwd: root, args: [], fetchImpl: async () => response(page(row(1))) });
   const target = path.join(root, "custom-gallery.json");
   const good = await readFile(target, "utf8");
   assert.equal(JSON.parse(good).subjects[0].images.small, "https://lain.bgm.tv/configured.jpg");
-  await assert.rejects(main({ ...options, cwd: root, args: [], fetchImpl: async () => response("<h1>请登录</h1>") }), /不是预期/);
+  await assert.rejects(main({ ...options, accessToken: "", cwd: root, args: [], fetchImpl: async () => response("<h1>请登录</h1>") }), /不是预期/);
   assert.equal(await readFile(target, "utf8"), good);
   await writeSnapshotAtomic(target, JSON.parse(good));
   assert.ok((await readdir(root)).every((name) => !name.endsWith(".tmp")));

@@ -42,7 +42,8 @@ export function recommendGames(subjects, collections, metadata, {
   const records = metadata.subjects;
   const gameCollections = collections.filter(c => Number(c.subject_type ?? c.subject?.type) === 4);
   const unavailable = gameCollections.filter(c => [2, 3, 4, 5].includes(Number(c.type)));
-  const done = gameCollections.filter(c => Number(c.type) === 2);
+  const done = gameCollections.filter(c => Number(c.type) === 2
+    && records[c.subject_id ?? c.subject?.id]?.is_galgame !== false && c.subject?.is_galgame !== false);
   const workId = subject => records[subject.id]?.work_id || subject.id;
   const blockedIds = new Set(unavailable.map(c => Number(c.subject_id ?? c.subject.id)));
   const blockedWorks = new Set(unavailable.map(c => workId(c.subject)));
@@ -68,6 +69,7 @@ export function recommendGames(subjects, collections, metadata, {
   }
   const frequency = new Map();
   for (const record of Object.values(records)) {
+    if (!record.is_galgame) continue;
     for (const feature of new Set(features(record))) frequency.set(feature, (frequency.get(feature) || 0) + 1);
   }
   const preference = (record, prefix, cap) => Math.max(-cap, Math.min(cap,
@@ -81,7 +83,7 @@ export function recommendGames(subjects, collections, metadata, {
   let excludedVersions = 0;
   for (const subject of subjects) {
     const record = records[subject.id];
-    if (!record || !record.is_galgame || record.collection || hidden.has(record.work_id)) continue;
+    if (!record || !record.is_galgame || subject.is_galgame === false || record.collection || hidden.has(record.work_id)) continue;
     if (blockedIds.has(subject.id)) continue;
     if (blockedWorks.has(record.work_id) || titleKeys(subject).some(key => blockedTitles.has(key))) {
       excludedVersions++;

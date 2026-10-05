@@ -125,7 +125,7 @@ function start(storage = new Map()) {
 }
 
 function subject(id, extra = {}) {
-  return { id, name: `游戏 ${id}`, type: 4, date: "2025-01-01", ...extra };
+  return { id, name: `游戏 ${id}`, type: 4, is_galgame: true, date: "2025-01-01", ...extra };
 }
 function collection(id, extra = {}) {
   return { subject: subject(id), type: 2, rate: 8, updated_at: "2026-01-01", ...extra };
@@ -137,6 +137,22 @@ async function loaded(mine = [collection(1)], gal = [subject(2)], storage) {
   await app.reply("custom/games.json", { subjects: gal, updated_at: "2026-10-02" });
   return app;
 }
+
+test("only classified Galgames appear by default; all-game personal records stay accessible", async () => {
+  const app = await loaded([collection(1), collection(283730, { subject: subject(283730, { is_galgame: false }) })],
+    [subject(2), subject(62229, { is_galgame: false }), subject(37141, { is_galgame: false }), subject(105699, { is_galgame: false }), subject(999, { is_galgame: undefined })]);
+  assert.equal(app.node("filter-type").value, "galgame");
+  assert.equal(app.cards("mine").length, 1);
+  app.change("filter-type", "4");
+  assert.equal(app.cards("mine").length, 2);
+  app.change("filter-type", "galgame");
+  assert.equal(app.cards("mine").length, 1);
+  app.tab("unplayed");
+  assert.equal(app.cards("unplayed").length, 1);
+  assert.match(app.cards("unplayed")[0].innerHTML, /游戏 2/);
+  app.change("search-box", "62229");
+  assert.equal(app.cards("unplayed").length, 0);
+});
 
 test("configuration controls the title, links and both snapshot paths", async () => {
   const app = await loaded();

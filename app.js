@@ -44,7 +44,7 @@ const state = {
     meta: { status: "idle", error: "", updatedAt: "" },
   },
   views: {
-    mine: { status: "2", type: "4", sort: "rate", query: "", page: 1, pageSize: 50 },
+    mine: { status: "2", type: "galgame", sort: "rate", query: "", page: 1, pageSize: 50 },
     unplayed: { sort: "rate", query: "", page: 1, pageSize: 50 },
     recommend: { mode: "personal", batch: 0 },
   },
@@ -153,7 +153,8 @@ function computeMineFiltered() {
   return state.myCollections.filter(collection => {
     const subject = collection.subject || {};
     return (view.status === "all" || String(collection.type) === view.status)
-      && (view.type === "all" || String(subject.type) === view.type)
+      && (view.type === "all" || (view.type === "galgame"
+        ? String(subject.type) === "4" && subject.is_galgame === true : String(subject.type) === view.type))
       && (!query || [subject.name, subject.name_cn, collection.comment].some(value => String(value || "").toLowerCase().includes(query)));
   }).sort((a, b) => view.sort === "rate"
     ? scoreOf(b.rate) - scoreOf(a.rate)
@@ -163,8 +164,8 @@ function computeMineFiltered() {
 function computeUnplayedFiltered() {
   const view = state.views.unplayed;
   const query = view.query.trim().toLowerCase();
-  return state.unplayed.filter(subject => !query || [subject.name, subject.name_cn]
-    .some(value => String(value || "").toLowerCase().includes(query)))
+  return state.unplayed.filter(subject => subject.is_galgame === true && (!query || [subject.name, subject.name_cn]
+    .some(value => String(value || "").toLowerCase().includes(query))))
     .sort((a, b) => view.sort === "date"
       ? String(b.date || "").localeCompare(String(a.date || ""))
       : scoreOf(b.rating?.score) - scoreOf(a.rating?.score) || (Number(b.rating?.total) || 0) - (Number(a.rating?.total) || 0));
@@ -265,7 +266,7 @@ function renderRecommendations() {
   el.recommendNext.disabled = items.length <= 12;
   el.recommendRestore.hidden = !state.hiddenWorkIds.length;
   el.recommendBatch.textContent = items.length ? `第 ${view.batch + 1} / ${batches} 批 · ${items.length} 部候选` : "";
-  el.recommendSummary.textContent = `参考 ${stats.favorites} 部高分作品；已过滤 ${stats.excludedVersions} 个已玩 / 在玩等作品的其他版本。包含想玩，排除在玩、搁置和抛弃；只推荐已发售且至少 20 人评分的作品。`;
+  el.recommendSummary.textContent = `参考 ${stats.favorites} 部高分 Galgame；已过滤 ${stats.excludedVersions} 个已玩 / 在玩等作品的其他版本。包含想玩，排除在玩、搁置和抛弃；只推荐通过类型筛选、已发售且至少 20 人评分的作品。`;
   setStatus(items.length ? "" : "暂时没有符合条件的推荐。可以切换推荐方向或恢复已隐藏的作品。");
 }
 
@@ -323,7 +324,7 @@ function syncControls() {
   if (mine) {
     el.filterStatus.value = view.status;
     el.filterType.value = view.type;
-    const names = view.type === "4" ? GAME_STATUS_NAMES : STATUS_NAMES;
+    const names = ["4", "galgame"].includes(view.type) ? GAME_STATUS_NAMES : STATUS_NAMES;
     Array.from(el.filterStatus.options).forEach(option => {
       option.textContent = names[option.value] || "全部";
     });
@@ -388,7 +389,7 @@ function applyConfig() {
     link.hidden = !safeUrl;
     if (safeUrl) link.href = safeUrl;
   }
-  el.unplayedNote.textContent = `来自 Bangumi 用户标注的「${config.galgame.tag || "Galgame"}」标签清单，可能包含其他类型游戏；排除我的全部收藏状态（含想玩、在玩、搁置和抛弃）。`;
+  el.unplayedNote.textContent = `已结合游戏类型、Galgame 分类与标签共识筛选；排除我的全部收藏状态（含想玩、在玩、搁置和抛弃）。`;
   try {
     const saved = JSON.parse(localStorage.getItem(`galgame-gallery:hidden:${config.bangumi.username}`) || "[]");
     state.hiddenWorkIds = Array.isArray(saved) ? saved.filter(id => Number.isSafeInteger(id) && id > 0) : [];

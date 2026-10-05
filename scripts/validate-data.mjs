@@ -64,6 +64,24 @@ export function validateData(galgame, mine) {
     uncollected: galgame.subjects.filter(s => !collectionIds.has(s.id)).length };
 }
 
+export function validateClassification(galgame, mine, recommendations) {
+  check(recommendations.classification_version === 1, "推荐类型规则版本无效，请重新生成元数据");
+  for (const snapshot of [galgame, mine]) {
+    check(snapshot.galgame_classification?.version === 1, "快照尚未完成 Galgame 类型筛选");
+    check(snapshot.galgame_classification.source_digest === recommendations.source?.digest, "类型筛选与推荐资料的来源不一致");
+  }
+  const accepted = subject => recommendations.subjects[subject.id]?.is_galgame === true;
+  for (const subject of galgame.subjects) {
+    check(typeof subject.is_galgame === "boolean" && subject.is_galgame === accepted(subject), `条目 ${subject.id} 类型筛选结果不一致`);
+  }
+  for (const collection of mine.collections.filter(c => Number(c.subject_type ?? c.subject?.type) === 4)) {
+    check(typeof collection.subject.is_galgame === "boolean" && collection.subject.is_galgame === accepted(collection.subject), `收藏 ${collection.subject.id} 类型筛选结果不一致`);
+  }
+  const galgames = galgame.subjects.filter(s => s.is_galgame).length;
+  check(galgames === galgame.galgame_classification.accepted_count && galgames > 0, "通过类型筛选的条目计数无效");
+  return { galgames, filtered: galgame.count - galgames };
+}
+
 export async function main() {
   const config = JSON.parse(await readFile("config.json", "utf8"));
   const [galgame, mine, recommendations] = await Promise.all([
@@ -74,7 +92,7 @@ export async function main() {
   validateRecommendationMetadata(recommendations);
   check(Number.isFinite(Date.parse(recommendations.source?.date)), "推荐档案缺少有效来源日期");
   check(galgame.subjects.filter(s => recommendations.subjects[s.id]).length >= galgame.count * 0.85, "推荐元数据覆盖率不足 85%");
-  console.log("数据校验通过：", JSON.stringify(validateData(galgame, mine)));
+  console.log("数据校验通过：", JSON.stringify({ ...validateData(galgame, mine), ...validateClassification(galgame, mine, recommendations) }));
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {

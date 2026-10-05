@@ -99,3 +99,24 @@ test("official real metadata excludes Aokana's other version while allowing its 
   const result = recommendGames([game(540024), game(175526)], [collection(76912)], metadata, { mode: "sequels" });
   assert.deepEqual(ids(result), [175526]);
 });
+
+test("real catalogue rejects unrelated AAA games in every recommendation mode", () => {
+  const metadata = JSON.parse(readFileSync(new URL("../data/recommendation-metadata.json", import.meta.url)));
+  const subjects = JSON.parse(readFileSync(new URL("../data/galgame-list.json", import.meta.url))).subjects;
+  const rejected = [283730, 62229, 37141, 105699, 15912, 284100, 206733];
+  const kept = [13, 1457, 12098, 226254, 424578, 280440, 23491];
+  for (const id of rejected) assert.equal(metadata.subjects[id].is_galgame, false, `Unexpected Galgame: ${id}`);
+  for (const id of kept) assert.equal(metadata.subjects[id].is_galgame, true, `Lost Galgame: ${id}`);
+  for (const mode of ["personal", "quality", "sequels"]) {
+    assert.ok(ids(recommendGames(subjects, [], metadata, { mode })).every(id => !rejected.includes(id)));
+  }
+  assert.ok(ids(recommendGames(subjects.filter(s => kept.includes(s.id)), [], metadata)).includes(226254));
+});
+
+test("non-Galgame favorites cannot influence Galgame recommendations", () => {
+  const metadata = meta({ 1: record(1, { is_galgame: false, writers: [10] }), 2: record(2, { writers: [10] }), 3: record(3) });
+  const result = recommendGames([game(2), game(3)], [collection(1, { rate: 10 })], metadata);
+  assert.equal(result.stats.favorites, 0);
+  assert.ok(result.items.every(item => item.reasons.every(reason => !reason.includes("同一剧本作者"))));
+  assert.deepEqual(ids(recommendGames([game(2, { is_galgame: false }), game(3)], [], metadata)), [3]);
+});
